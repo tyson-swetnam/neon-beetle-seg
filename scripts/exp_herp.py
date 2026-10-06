@@ -1,6 +1,5 @@
 """Experiment: herp route on sample photos, with overlays and the ruler scale."""
-import time, cv2, numpy as np, pandas as pd, torch
-from PIL import Image
+import time, cv2, numpy as np, pandas as pd
 from neon_beetle_seg import config, measure, scale, segment
 man = pd.read_parquet(config.TABLES / "image_manifest.parquet")
 h = man[(man.source == "herp") & man.process]
