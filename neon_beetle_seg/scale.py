@@ -261,7 +261,7 @@ def build(pools: tuple[str, ...] | None = None):
     Image.MAX_IMAGE_PIXELS = None
     pools = tuple(pools or POOLS)
     man = pd.read_parquet(config.TABLES / "image_manifest.parquet")
-    man = man[man["duplicate_of"].isna() & man["is_carabid"]]
+    man = man[man["process"]]
     path = config.TABLES / "image_scale.parquet"
     rows = []
     if path.exists():

@@ -219,6 +219,8 @@ def build(force: bool = False) -> dict[str, pd.DataFrame]:
     images.insert(0, "image_id", "biorepo/" + images["collection"] + "/" +
                   images["image_url"].map(lambda u: Path(u).stem))
     images.insert(1, "source", "biorepo")
+    # a dozen photos were uploaded twice for the same record (same file name, two folders)
+    images = images.drop_duplicates("image_id")
     counts = records.groupby("collection").agg(
         records=("occid", "size"), records_with_images=("n_images", lambda s: int((s > 0).sum())),
         sites=("siteID", "nunique"), first_year=("year", "min"), last_year=("year", "max"),

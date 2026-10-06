@@ -7,6 +7,8 @@ Routes (image_manifest.route):
           best beetle box -> SAM 2.1 -> BeetleFlow
   crop    image is already a tight crop of one specimen (sentinel-beetles): BeetleFlow on the
           whole crop -> box around its foreground -> SAM 2.1
+  herp    reptile and amphibian bycatch on a white backdrop with a ruler and colour card:
+          Grounding DINO with herp prompts -> SAM 2.1; no part labels (BeetleFlow is a beetle model)
 
 Output is sharded parquet under outputs/shards/<source>/ so a run can be stopped and resumed:
   instances-*.parquet  one row per specimen (boxes, mask RLE, pixel metrics)
@@ -30,6 +32,7 @@ from . import config, measure, models
 Image.MAX_IMAGE_PIXELS = None
 
 PROMPT = "a beetle."
+HERP_PROMPT = "a lizard. a frog. a salamander. a snake. a toad."
 BOX_THR, TEXT_THR = 0.25, 0.2
 PARTS_PAD = 0.06  # BeetleFlow was trained on detector-box crops, so keep its crop tight
 MAX_BOX_FRAC_TRAY = 0.20  # a "beetle" box covering more of a tray than this is the tray itself
@@ -89,15 +92,51 @@ def fix_backdrop_mask(mask: np.ndarray) -> tuple[np.ndarray, str | None]:
     return inv, "inverted_backdrop"
 
 
+def drop_duplicate_masks(rows: list[dict], overlap: float = 0.5) -> list[dict]:
+    """Drop a specimen whose mask mostly lies inside a larger one already kept.
+
+    Several prompt words can box the same animal (a frog is also "a toad"), and a box around
+    a limb can sit inside the box around the whole animal with too little overlap for NMS.
+    """
+    if len(rows) < 2:
+        return rows
+    order = sorted(range(len(rows)), key=lambda i: -(rows[i]["area_px"] or 0))
+    full = {}
+
+    def place(i):
+        r = rows[i]
+        m = measure.rle_decode(r["mask_rle"], r["mask_h"], r["mask_w"])
+        return (r["win_x1"], r["win_y1"], m)
+
+    kept: list[int] = []
+    for i in order:
+        x, y, m = place(i)
+        dup = False
+        for j in kept:
+            xj, yj, mj = full[j]
+            x1, y1 = max(x, xj), max(y, yj)
+            x2, y2 = min(x + m.shape[1], xj + mj.shape[1]), min(y + m.shape[0], yj + mj.shape[0])
+            if x2 <= x1 or y2 <= y1:
+                continue
+            inter = (m[y1 - y:y2 - y, x1 - x:x2 - x] & mj[y1 - yj:y2 - yj, x1 - xj:x2 - xj]).sum()
+            if inter > overlap * max(m.sum(), 1):
+                dup = True
+                break
+        if not dup:
+            kept.append(i)
+            full[i] = (x, y, m)
+    return [rows[i] for i in sorted(kept)]
+
+
 def _parts_window(box, width: int, height: int) -> tuple[int, int, int, int]:
     return models.Sam2.crop_window(box, width, height, pad=PARTS_PAD, min_side=32)
 
 
 class Pipeline:
     def __init__(self, routes: set[str], parts: bool = True, sam_id: str = models.SAM2_ID):
-        self.gd = models.GroundingDino() if routes & {"tray", "single"} else None
+        self.gd = models.GroundingDino() if routes & {"tray", "single", "herp"} else None
         self.sam = models.Sam2(sam_id)
-        self.bf = models.BeetleFlow() if parts else None
+        self.bf = models.BeetleFlow() if parts and routes - {"herp"} else None
         self.model_ids = dict(detector=models.GDINO_ID if self.gd else None, segmenter=sam_id,
                               parts_model=self.bf.model_id if self.bf else None)
 
@@ -127,6 +166,22 @@ class Pipeline:
             return det.boxes, det.scores, "grounding_dino_tiled"
         return whole.boxes, whole.scores, "grounding_dino"
 
+    def boxes_herp(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray, str]:
+        """Every reptile or amphibian in the photo (a vial can hold several).
+
+        The photos share a layout: specimen on white, barcode label top left, ruler and colour
+        card along the bottom. Boxes that are mostly inside the bottom band holding the ruler,
+        or that span most of the frame, are not specimens.
+        """
+        w, h = image.size
+        det = self.gd.detect(image, HERP_PROMPT, BOX_THR, TEXT_THR)
+        if len(det):
+            b = det.boxes
+            area = (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])
+            centre_y = (b[:, 1] + b[:, 3]) / 2
+            det = models.nms(det.select((area < 0.5 * w * h) & (area > 2e-4 * w * h) & (centre_y < 0.72 * h)), 0.5, 0.8)
+        return det.boxes, det.scores, "grounding_dino"
+
     def boxes_single(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray, str]:
         det = self.gd.detect(image, PROMPT, BOX_THR, TEXT_THR)
         w, h = image.size
@@ -145,12 +200,13 @@ class Pipeline:
 
     # ---- shared tail: SAM mask + parts + metrics ---------------------------------------------
     def finish(self, image: Image.Image, boxes: np.ndarray, scores: np.ndarray, det_source: str,
-               part_maps: list[np.ndarray] | None = None, part_windows: list | None = None) -> list[dict]:
+               part_maps: list[np.ndarray] | None = None, part_windows: list | None = None,
+               parts: bool = True, midline: bool = False) -> list[dict]:
         if len(boxes) == 0:
             return []
         w, h = image.size
         sam_out = self.sam.segment_boxes(image, boxes)
-        if self.bf is not None and part_maps is None:
+        if parts and self.bf is not None and part_maps is None:
             part_windows = [_parts_window(b, w, h) for b in boxes]
             part_maps = []
             for i in range(0, len(boxes), 8):
@@ -164,6 +220,8 @@ class Pipeline:
                        sam_score=sam_score, win_x1=win[0], win_y1=win[1], mask_w=mask.shape[1],
                        mask_h=mask.shape[0], mask_rle=measure.rle_encode(mask), mask_fix=mask_fix)
             row.update(measure.body_metrics(mask, rgb))
+            if midline:
+                row["midline_length_px"] = measure.midline_length(mask)
             # a mask running along the frame edge usually means a cut-off specimen or a bad prompt
             ys, xs = np.nonzero(mask)
             row["touches_edge"] = bool(len(xs) and (xs.min() + win[0] <= 1 or ys.min() + win[1] <= 1
@@ -205,6 +263,9 @@ class Pipeline:
         image = _open(row.local_path)
         if row.route == "crop":
             return self.run_crop(image)
+        if row.route == "herp":
+            boxes, scores, source = self.boxes_herp(image)
+            return drop_duplicate_masks(self.finish(image, boxes, scores, source, parts=False, midline=True))
         if row.route == "tray":
             # the tiled pass is for ethanol trays; pinned trays hold a handful of spaced specimens
             boxes, scores, source = self.boxes_tray(image, tiled=row.image_kind == "tray_ethanol")
@@ -226,7 +287,7 @@ def run(source: str, limit: int | None = None, flush_every: int = 200, parts: bo
     config.limit_threads()
     torch.set_num_threads(config.N_THREADS)
     man = pd.read_parquet(config.TABLES / "image_manifest.parquet")
-    man = man[(man["source"] == source) & man["duplicate_of"].isna() & man["is_carabid"]]
+    man = man[(man["source"] == source) & man["process"]]
     shard_dir = config.OUT / "shards" / source
     shard_dir.mkdir(parents=True, exist_ok=True)
     todo = man[~man["image_id"].isin(_done_ids(shard_dir))]
@@ -328,7 +389,7 @@ def recheck_trays(source: str = "hf2018") -> list[str]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("source", choices=["hf2018", "hawaii", "biorepo", "sentinel"])
+    ap.add_argument("source", choices=["hf2018", "hawaii", "biorepo", "sentinel", "herp"])
     ap.add_argument("--limit", type=int)
     ap.add_argument("--no-parts", action="store_true")
     ap.add_argument("--sam", default=models.SAM2_ID, help="SAM 2.1 checkpoint (default: %(default)s)")

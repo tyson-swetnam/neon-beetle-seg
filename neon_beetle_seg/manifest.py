@@ -5,6 +5,9 @@ Pools and how each is processed (`route`):
   hf2018    imageomics/2018-NEON-beetles group images     tray  (ethanol specimens, 2018)
   hawaii    imageomics/Hawaii-beetles group images        tray  (pinned specimens, PUUM)
   sentinel  imageomics/sentinel-beetles individual crops  crop  (pinned, IDs anonymised)
+  herp      NEON Biorepository herptile bycatch photos    herp  (reptiles and amphibians)
+
+`process` marks the images that get segmented: not a duplicate, and either a carabid or a herp.
 
 Writes data/tables/image_manifest.parquet plus the human annotation tables used for validation.
 """
@@ -31,7 +34,7 @@ def _mode(s: pd.Series):
 
 COLUMNS = [
     "image_id", "source", "image_kind", "route", "view", "local_path", "width", "height", "license",
-    "image_url", "sha256", "duplicate_of", "is_carabid",
+    "image_url", "sha256", "duplicate_of", "is_carabid", "specimen_group", "process",
     # join keys back to NEON
     "individualID", "neon_sampleID", "neon_barcode", "biorepo_occid", "catalogNumber",
     "siteID", "plotID", "domainID", "eventDate", "year", "scientificName", "sex", "individualCount",
@@ -150,10 +153,12 @@ def sentinel() -> pd.DataFrame:
 
 def biorepo(hf_barcodes: set[str]) -> pd.DataFrame:
     im = pd.read_parquet(config.TABLES / "biorepo_images.parquet")
-    files = pd.read_parquet(config.TABLES / "biorepo_image_files.parquet")
+    files = pd.read_parquet(config.TABLES / "biorepo_image_files.parquet").drop_duplicates("image_id")
     m = im.merge(files, on="image_id", how="left")
     m = m[m["status"] == "ok"].copy()
     m["route"] = np.where(m["image_kind"] == "tray_ethanol", "tray", "single")
+    herp = m["specimen_group"] == "herptile bycatch"
+    m.loc[herp, ["source", "route"]] = ["herp", "herp"]
     m["is_carabid"] = m["family"] == "Carabidae"
     m["biorepo_occid"] = m["occid"]
     # the Biorepository tray photos are downsized copies of the HuggingFace 2018 trays
@@ -177,17 +182,20 @@ def build() -> pd.DataFrame:
     boxes.to_parquet(config.TABLES / "tray_boxes_2018.parquet", index=False)
     hw_traits.to_parquet(config.TABLES / "trait_annotations_hawaii.parquet", index=False)
     parts = [biorepo(set(trays["neon_barcode"])), trays, hw, sentinel()]
+    for part, group in zip(parts[1:], ("bulk carabid", "pinned carabid", "pinned carabid")):
+        part["specimen_group"] = group
     man = pd.concat([p.reindex(columns=COLUMNS) for p in parts], ignore_index=True)
     for c in ("year", "individualCount", "biorepo_occid"):
         man[c] = man[c].astype("string")
     man["is_carabid"] = man["is_carabid"].astype(bool)
+    man["process"] = man["duplicate_of"].isna() & (man["is_carabid"] | (man["source"] == "herp"))
     man.to_parquet(config.TABLES / "image_manifest.parquet", index=False)
     return man
 
 
 def main() -> None:
     man = build()
-    todo = man[man["duplicate_of"].isna() & man["is_carabid"]]
+    todo = man[man["process"]]
     print(f"image_manifest: {len(man):,} rows; {len(todo):,} to process")
     print(man.assign(dup=man["duplicate_of"].notna()).groupby(["source", "image_kind", "route"]).agg(
         images=("image_id", "size"), duplicates=("dup", "sum"), non_carabid=("is_carabid", lambda s: (~s).sum()),

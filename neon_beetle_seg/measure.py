@@ -63,10 +63,14 @@ def body_metrics(mask: np.ndarray, rgb: np.ndarray | None = None) -> dict:
     """Whole-specimen metrics for one bool mask (legs and antennae included unless stated)."""
     out = dict.fromkeys(
         ["area_px", "perimeter_px", "length_px", "width_px", "ellipse_major_px", "ellipse_minor_px",
-         "orientation_deg", "core_length_px", "core_width_px", "solidity", "mean_r", "mean_g", "mean_b"])
+         "orientation_deg", "core_length_px", "core_width_px", "solidity", "mean_r", "mean_g", "mean_b",
+         "largest_blob_frac"])
     raw_area = int(mask.sum())
     if raw_area < 9:
         return out
+    m = largest_component(mask, fill_holes=False)
+    # a clean mask is one blob; a speckled, scattered mask is a failed segmentation
+    out["largest_blob_frac"] = float(m.sum()) / raw_area
     m = largest_component(mask)
     area = float(m.sum())  # exact, at full resolution
     small, sc = _downscale(m)
@@ -197,3 +201,51 @@ def base_widths(head: np.ndarray, pronotum: np.ndarray, elytra: np.ndarray, slab
         if psel.sum() >= 3:
             out["pronotum_base_width_px"] = float(fp[psel].max() - fp[psel].min() + 1) / sc
     return out
+
+
+def midline_length(mask: np.ndarray) -> float | None:
+    """Length of the longest path through the mask's skeleton, in pixels.
+
+    For a long, bent animal (a salamander, a lizard with its tail) the bounding rectangle
+    understates length; the skeleton follows the body. The longest skeleton path runs from one
+    extremity to the other, so on a specimen with a tail it approximates total length, and on a
+    frog with a leg stretched out it runs to the toes. It is not snout-vent length. The
+    skeleton stops about half a body-width short of each tip, which is added back from the
+    distance transform.
+    """
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import dijkstra
+    from skimage.morphology import skeletonize
+
+    m = largest_component(mask)
+    small, sc = _downscale(m)
+    small = small.astype(bool)
+    if small.sum() < 20:
+        return None
+    skel = skeletonize(small)
+    ys, xs = np.nonzero(skel)
+    n = len(xs)
+    if n < 2:
+        return None
+    index = -np.ones(skel.shape, np.int64)
+    index[ys, xs] = np.arange(n)
+    rows, cols, weights = [], [], []
+    for dy, dx in ((0, 1), (1, 0), (1, 1), (1, -1)):
+        y2, x2 = ys + dy, xs + dx
+        ok = (y2 >= 0) & (y2 < skel.shape[0]) & (x2 >= 0) & (x2 < skel.shape[1])
+        j = np.full(n, -1)
+        j[ok] = index[y2[ok], x2[ok]]
+        hit = j >= 0
+        rows += [np.flatnonzero(hit)]
+        cols += [j[hit]]
+        weights += [np.full(hit.sum(), float(np.hypot(dy, dx)))]
+    graph = coo_matrix((np.concatenate(weights), (np.concatenate(rows), np.concatenate(cols))), shape=(n, n))
+    # two sweeps find the two ends of the longest path in a tree-like skeleton
+    d0 = dijkstra(graph, directed=False, indices=0)
+    d0[~np.isfinite(d0)] = -1
+    a = int(np.argmax(d0))
+    d1 = dijkstra(graph, directed=False, indices=a)
+    d1[~np.isfinite(d1)] = -1
+    b = int(np.argmax(d1))
+    dist = cv2.distanceTransform(small.astype(np.uint8), cv2.DIST_L2, 5)
+    return float(d1[b] + dist[ys[a], xs[a]] + dist[ys[b], xs[b]]) / sc

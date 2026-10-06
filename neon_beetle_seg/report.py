@@ -205,7 +205,7 @@ def build() -> str:
     gbif, sam3 = read("gbif_occurrences"), read("sam3_comparison")
     colls, pres = read("biorepo_collections"), read("preserved_samples")
     scale_tbl, prov = read("image_scale"), read("run_provenance")
-    todo = man[man["duplicate_of"].isna() & man["is_carabid"]]
+    todo = man[man["process"]]
     done_ids = set(res.loc[res["status"] == "ok", "image_id"]) if res is not None else set()
     P: list[str] = []
 

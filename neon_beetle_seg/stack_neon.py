@@ -135,16 +135,21 @@ def link_biorepository(man: pd.DataFrame) -> pd.DataFrame:
     if not bio_path.exists():
         return man
     bio = pd.read_parquet(bio_path, columns=["individualID", "collection", "catalogNumber", "occid", "n_images"])
-    bio = bio[bio["individualID"].notna()].sort_values("n_images", ascending=False).drop_duplicates("individualID")
+    # an individual can have a pinned voucher and a DNA extract: link the voucher, then the one with photos
+    rank = bio["collection"].map({"CARC-PV": 0, "DCTC": 1}).fillna(2)
+    bio = bio[bio["individualID"].notna()].assign(_rank=rank).sort_values(["_rank", "n_images"], ascending=[True, False])
+    bio = bio.drop_duplicates("individualID").drop(columns="_rank")
     man = man.merge(bio.rename(columns={"collection": "biorepo_collection", "catalogNumber": "biorepo_catalogNumber",
                                         "occid": "biorepo_occid", "n_images": "biorepo_n_images"}),
                     on="individualID", how="left")
-    man["in_biorepository"] = man["biorepo_catalogNumber"].notna()
+    man["in_biorepository"] = man["biorepo_occid"].notna()  # domain-office records have no catalog number
     man["biorepo_n_images"] = man["biorepo_n_images"].fillna(0).astype(int)
     gbif_path = config.TABLES / "gbif_occurrences.parquet"
     if gbif_path.exists():
-        g = pd.read_parquet(gbif_path, columns=["gbifID", "catalogNumber"]).drop_duplicates("catalogNumber")
-        man = man.merge(g.rename(columns={"catalogNumber": "biorepo_catalogNumber"}), on="biorepo_catalogNumber", how="left")
+        # missing keys must not match each other: pandas joins NaN to NaN
+        g = pd.read_parquet(gbif_path, columns=["gbifID", "catalogNumber"]).dropna(subset=["catalogNumber"])
+        g = g.drop_duplicates("catalogNumber").set_index("catalogNumber")["gbifID"]
+        man["gbifID"] = man["biorepo_catalogNumber"].map(g).where(man["biorepo_catalogNumber"].notna())
     return man
 
 
@@ -161,8 +166,9 @@ def preserved_samples(sorting: pd.DataFrame, pooling: pd.DataFrame | None) -> pd
     or one of bulk invertebrate bycatch per trap), and the archive vials those are pooled into
     per plot and bout (bet_archivepooling). Pinned individuals are in specimen_manifest instead.
 
-    The Biorepository link tries the sample ID, then its hash (NEON publishes some IDs only
-    hashed, and the Biorepository records carry the same hash), then the vial barcode.
+    The Biorepository link tries the sample ID, then its hash, then the vial barcode. In practice
+    the hash does the work: NEON's tables publish subsampleID and archiveVialID as hashes, and
+    each Biorepository record carries the same value as "NEON sampleID Hash".
     """
     common = ["domainID", "siteID", "plotID", "setDate", "collectDate", "sampleType", "taxonID", "scientificName",
               "sampleCondition", "remarks", "release"]
@@ -193,20 +199,23 @@ def preserved_samples(sorting: pd.DataFrame, pooling: pd.DataFrame | None) -> pd
         how = pd.Series(pd.NA, index=out.index, dtype="object")
         for key, col, label in (("sample_id", "neon_sampleID", "sample ID"), ("sample_id", "neon_sampleID_hash", "sample ID hash"),
                                 ("barcode", "neon_barcode", "barcode")):
-            lookup = bio[bio[col].notna()].drop_duplicates(col).set_index(col)["catalogNumber"]
+            lookup = bio[bio[col].notna() & bio["catalogNumber"].notna()].drop_duplicates(col).set_index(col)["catalogNumber"]
             hit = out[key].map(lookup)
             fill = link.isna() & hit.notna()
             link[fill], how[fill] = hit[fill], label
         out["biorepo_catalogNumber"], out["biorepo_link"] = link, how
-        acc = bio.drop_duplicates("catalogNumber").set_index("catalogNumber")
+        acc = bio.dropna(subset=["catalogNumber"]).drop_duplicates("catalogNumber").set_index("catalogNumber")
         out["biorepo_collection"] = out["biorepo_catalogNumber"].map(acc["collection"])
         out["biorepo_occid"] = out["biorepo_catalogNumber"].map(acc["occid"])
-        out["biorepo_n_images"] = out["biorepo_catalogNumber"].map(acc["n_images"]).fillna(0).astype(int)
         out["in_biorepository"] = out["biorepo_catalogNumber"].notna()
+        for col in ("biorepo_collection", "biorepo_occid"):
+            out[col] = out[col].where(out["in_biorepository"])
+        out["biorepo_n_images"] = out["biorepo_catalogNumber"].map(acc["n_images"]).where(out["in_biorepository"]).fillna(0).astype(int)
         gbif_path = config.TABLES / "gbif_occurrences.parquet"
         if gbif_path.exists():
-            g = pd.read_parquet(gbif_path, columns=["gbifID", "catalogNumber"]).drop_duplicates("catalogNumber")
-            out["gbifID"] = out["biorepo_catalogNumber"].map(g.set_index("catalogNumber")["gbifID"])
+            g = pd.read_parquet(gbif_path, columns=["gbifID", "catalogNumber"]).dropna(subset=["catalogNumber"])
+            g = g.drop_duplicates("catalogNumber").set_index("catalogNumber")["gbifID"]
+            out["gbifID"] = out["biorepo_catalogNumber"].map(g).where(out["in_biorepository"])
     return out
 
 

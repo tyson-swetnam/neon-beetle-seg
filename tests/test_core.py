@@ -7,7 +7,7 @@ from PIL import Image
 from neon_beetle_seg import measure, scale
 from neon_beetle_seg.fetch_biorepo import classify_image, parse_other_catalog_numbers
 from neon_beetle_seg.models import PART_CLASSES, Detections, Sam2, box_iou, nms, tile_grid
-from neon_beetle_seg.segment import border_coverage, fix_backdrop_mask
+from neon_beetle_seg.segment import border_coverage, drop_duplicate_masks, fix_backdrop_mask
 
 
 # ---- identifiers ---------------------------------------------------------------------------------
@@ -152,3 +152,36 @@ def test_backdrop_mask_is_inverted_and_specimen_mask_is_kept():
     assert how is None and (kept == beetle).all() and border_coverage(beetle) == 0
     fixed, how = fix_backdrop_mask(~beetle)  # SAM returned the backdrop
     assert how == "inverted_backdrop" and (fixed == beetle).all()
+
+
+# ---- midline length ------------------------------------------------------------------------------
+def test_midline_length_follows_a_bent_body():
+    m = np.zeros((400, 400), np.uint8)
+    pts = np.array([[40, 40], [200, 60], [340, 200], [360, 360]], np.int32)  # an L-shaped "salamander"
+    cv2.polylines(m, [pts], False, 1, thickness=18)
+    true = sum(float(np.hypot(*(pts[i + 1] - pts[i]))) for i in range(len(pts) - 1)) + 18
+    got = measure.midline_length(m.astype(bool))
+    assert got == pytest.approx(true, rel=0.06)
+    rect_long = measure.body_metrics(m.astype(bool))["length_px"]
+    assert got > rect_long  # the rectangle cuts the corner
+
+
+def test_drop_duplicate_masks_keeps_distinct_specimens():
+    def row(mask, x, y):
+        return dict(mask_rle=measure.rle_encode(mask), mask_h=mask.shape[0], mask_w=mask.shape[1], win_x1=x, win_y1=y,
+                    area_px=float(mask.sum()))
+    body = _ellipse(100, 200, (100, 50), (80, 30))
+    limb = np.zeros((100, 200), bool)
+    limb[40:60, 20:60] = body[40:60, 20:60]  # part of the same animal
+    other = _ellipse(100, 200, (100, 50), (80, 30))
+    kept = drop_duplicate_masks([row(limb, 0, 0), row(body, 0, 0), row(other, 500, 0)])
+    assert len(kept) == 2 and {r["win_x1"] for r in kept} == {0, 500}
+    assert max(r["area_px"] for r in kept if r["win_x1"] == 0) == float(body.sum())
+
+
+def test_largest_blob_frac_flags_speckle():
+    clean = _ellipse(200, 200, (100, 100), (60, 40))
+    assert measure.body_metrics(clean)["largest_blob_frac"] == pytest.approx(1.0)
+    rng = np.random.default_rng(0)
+    speckle = clean | (rng.random((200, 200)) > 0.8)
+    assert measure.body_metrics(speckle)["largest_blob_frac"] < 0.8

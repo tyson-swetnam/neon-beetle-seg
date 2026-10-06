@@ -19,7 +19,7 @@ from . import config, measure
 LENGTH_COLS = ["length_px", "width_px", "perimeter_px", "ellipse_major_px", "ellipse_minor_px", "core_length_px",
                "core_width_px", "body_length_parts_px", "elytra_length_px", "elytra_width_px",
                "pronotum_length_px", "pronotum_width_px", "head_width_px", "elytra_base_width_px",
-               "pronotum_base_width_px", "elytra_midline_length_px"]
+               "pronotum_base_width_px", "elytra_midline_length_px", "midline_length_px"]
 AREA_COLS = ["area_px", "elytra_area_px", "pronotum_area_px", "head_area_px"]
 RLE_COLS = ["mask_rle", "head_rle", "pronotum_rle", "elytra_rle"]
 
@@ -182,7 +182,7 @@ def collect() -> dict[str, int]:
     for c in AREA_COLS:
         if c in m:
             m[c.replace("_px", "_mm2")] = m[c] / m["px_per_mm"] ** 2
-    keys = ["image_id", "source", "image_kind", "view", "individualID", "neon_sampleID", "neon_barcode",
+    keys = ["image_id", "source", "specimen_group", "image_kind", "view", "individualID", "neon_sampleID", "neon_barcode",
             "biorepo_occid", "catalogNumber", "siteID", "plotID", "domainID", "eventDate", "year",
             "scientificName", "sex", "anon_siteID", "anon_domainID", "anon_eventID", "split"]
     m = m.merge(man[keys], on="image_id", how="left")
