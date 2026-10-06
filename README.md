@@ -37,7 +37,7 @@ ATTACH 'ducklake:beetles.ducklake' AS lake (READ_ONLY);
 -- median body length per species at each site, for specimens with a scale and complete parts
 SELECT siteID, scientificName, count(*) AS n, round(median(body_length_parts_mm), 2) AS body_mm
 FROM lake.measurements
-WHERE qc_has_scale AND parts_complete AND NOT touches_edge AND source <> 'sentinel'
+WHERE qc_has_scale AND parts_complete AND NOT trunk_touches_edge AND source <> 'sentinel'
 GROUP BY ALL ORDER BY n DESC;
 ```
 

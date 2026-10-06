@@ -65,6 +65,30 @@ def _blob_box(image: Image.Image) -> np.ndarray | None:
     return np.array([x * s, y * s, (x + w) * s, (y + h) * s], np.float32)
 
 
+BACKDROP_BORDER = 0.5  # a mask covering more than half of its window's border is the backdrop
+
+
+def border_coverage(mask: np.ndarray) -> float:
+    """Fraction of the mask window's outline that the mask covers."""
+    return float(np.concatenate([mask[0], mask[-1], mask[:, 0], mask[:, -1]]).mean())
+
+
+def fix_backdrop_mask(mask: np.ndarray) -> tuple[np.ndarray, str | None]:
+    """Turn a backdrop mask into a specimen mask.
+
+    When the prompt box is the whole frame (a tight crop of one specimen on a plain backdrop),
+    SAM often returns the backdrop instead of the specimen: about half of the Biorepository's
+    2016 individual photos did. The backdrop wraps the window's border, which a specimen never
+    does, so such a mask is replaced by the largest blob of its complement.
+    """
+    if border_coverage(mask) <= BACKDROP_BORDER:
+        return mask, None
+    inv = measure.largest_component(~mask)
+    if inv.sum() < 0.01 * mask.size:
+        return mask, "backdrop_unfixed"
+    return inv, "inverted_backdrop"
+
+
 def _parts_window(box, width: int, height: int) -> tuple[int, int, int, int]:
     return models.Sam2.crop_window(box, width, height, pad=PARTS_PAD, min_side=32)
 
@@ -133,11 +157,12 @@ class Pipeline:
                 part_maps += self.bf.predict([image.crop(win) for win in part_windows[i:i + 8]])
         rows = []
         for k, (box, score, (win, mask, sam_score)) in enumerate(zip(boxes, scores, sam_out)):
+            mask, mask_fix = fix_backdrop_mask(mask)
             rgb = np.asarray(image.crop(win))
             row = dict(box_x1=float(box[0]), box_y1=float(box[1]), box_x2=float(box[2]), box_y2=float(box[3]),
                        det_score=None if np.isnan(score) else float(score), det_source=det_source,
                        sam_score=sam_score, win_x1=win[0], win_y1=win[1], mask_w=mask.shape[1],
-                       mask_h=mask.shape[0], mask_rle=measure.rle_encode(mask))
+                       mask_h=mask.shape[0], mask_rle=measure.rle_encode(mask), mask_fix=mask_fix)
             row.update(measure.body_metrics(mask, rgb))
             # a mask running along the frame edge usually means a cut-off specimen or a bad prompt
             ys, xs = np.nonzero(mask)
@@ -250,6 +275,30 @@ def run(source: str, limit: int | None = None, flush_every: int = 200, parts: bo
     print(f"{source}: done {n:,} images in {(time.time() - t0) / 60:.1f} min", flush=True)
 
 
+def drop_from_shards(source: str, image_ids: list[str]) -> None:
+    """Remove images from a pool's shards so the next `run` processes them again."""
+    ids = set(image_ids)
+    for f in sorted((config.OUT / "shards" / source).glob("*.parquet")):
+        df = pd.read_parquet(f)
+        keep = df[~df["image_id"].isin(ids)]
+        if len(keep) != len(df):
+            keep.to_parquet(f, index=False) if len(keep) else f.unlink()
+
+
+def recheck_backdrop(source: str) -> list[str]:
+    """Find specimens whose stored mask is the backdrop (see fix_backdrop_mask) and queue their
+    images for reprocessing. For results made before that fix existed."""
+    redo: set[str] = set()
+    for f in sorted((config.OUT / "shards" / source).glob("instances-*.parquet")):
+        df = pd.read_parquet(f, columns=["image_id", "mask_rle", "mask_h", "mask_w"])
+        for r in df.itertuples():
+            if border_coverage(measure.rle_decode(r.mask_rle, r.mask_h, r.mask_w)) > BACKDROP_BORDER:
+                redo.add(r.image_id)
+    drop_from_shards(source, sorted(redo))
+    print(f"{source}: {len(redo)} images to redo (backdrop masks)", flush=True)
+    return sorted(redo)
+
+
 def recheck_trays(source: str = "hf2018") -> list[str]:
     """Re-run detection on trays processed before the tiled pass existed.
 
@@ -272,11 +321,7 @@ def recheck_trays(source: str = "hf2018") -> list[str]:
             redo.append(image_id)
         if i % 50 == 0:
             print(f"  rechecked {i}/{len(done)}: {len(redo)} to redo, {(time.time() - t0) / i:.1f} s/img", flush=True)
-    for f in sorted(shard_dir.glob("*.parquet")):
-        df = pd.read_parquet(f)
-        keep = df[~df["image_id"].isin(redo)]
-        if len(keep) != len(df):
-            keep.to_parquet(f, index=False) if len(keep) else f.unlink()
+    drop_from_shards(source, redo)
     print(f"{source}: {len(redo)} trays to redo with tiled detection", flush=True)
     return redo
 
@@ -289,9 +334,13 @@ def main() -> None:
     ap.add_argument("--sam", default=models.SAM2_ID, help="SAM 2.1 checkpoint (default: %(default)s)")
     ap.add_argument("--recheck-trays", action="store_true",
                     help="first re-run tray detection with the tiled pass and redo trays where it wins")
+    ap.add_argument("--recheck-backdrop", action="store_true",
+                    help="first queue images whose stored mask is the backdrop for reprocessing")
     args = ap.parse_args()
     if args.recheck_trays:
         recheck_trays(args.source)
+    if args.recheck_backdrop:
+        recheck_backdrop(args.source)
     run(args.source, args.limit, parts=not args.no_parts, sam_id=args.sam)
 
 

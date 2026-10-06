@@ -7,6 +7,7 @@ from PIL import Image
 from neon_beetle_seg import measure, scale
 from neon_beetle_seg.fetch_biorepo import classify_image, parse_other_catalog_numbers
 from neon_beetle_seg.models import PART_CLASSES, Detections, Sam2, box_iou, nms, tile_grid
+from neon_beetle_seg.segment import border_coverage, fix_backdrop_mask
 
 
 # ---- identifiers ---------------------------------------------------------------------------------
@@ -140,3 +141,12 @@ def test_find_printed_bar():
     img[900:904, 900:1300] = 30
     bar = scale.find_printed_bar(Image.fromarray(img))
     assert bar is not None and bar["x2"] - bar["x1"] == pytest.approx(400, abs=2)
+
+
+# ---- backdrop masks ------------------------------------------------------------------------------
+def test_backdrop_mask_is_inverted_and_specimen_mask_is_kept():
+    beetle = _ellipse(200, 120, (60, 100), (35, 80))
+    kept, how = fix_backdrop_mask(beetle)
+    assert how is None and (kept == beetle).all() and border_coverage(beetle) == 0
+    fixed, how = fix_backdrop_mask(~beetle)  # SAM returned the backdrop
+    assert how == "inverted_backdrop" and (fixed == beetle).all()

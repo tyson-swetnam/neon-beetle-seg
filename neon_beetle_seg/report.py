@@ -363,7 +363,7 @@ def build() -> str:
                  "Specimens without a trusted scale keep pixel measurements and null millimetre columns.</p>")
 
     # ---- sizes ----------------------------------------------------------------------------------
-    sized = meas[meas["qc_has_scale"] & meas["parts_complete"].fillna(False) & ~meas["touches_edge"].fillna(False)]
+    sized = meas[meas["qc_has_scale"] & meas["parts_complete"].fillna(False) & ~meas["trunk_touches_edge"].fillna(True)]
     panels = []
     bins = np.arange(0, 42, 2)
     for src in ("hf2018", "hawaii", "biorepo", "sentinel"):
@@ -373,7 +373,7 @@ def build() -> str:
                           f"{fmt(len(vals))} specimens, median {np.nanmedian(vals):.1f} mm.</figcaption></figure>")
     if panels:
         P.append("<h2>Body length</h2><p>Head + pronotum + elytra along the body axis, for specimens with a scale, all three parts "
-                 "found and a mask clear of the photo's edge. Each panel has its own count axis.</p>")
+                 "found and the body clear of the photo's edge. Each panel has its own count axis.</p>")
         P.append('<div class="grid2">' + "".join(panels) + "</div>")
 
     # ---- examples -------------------------------------------------------------------------------
@@ -408,7 +408,7 @@ def build() -> str:
              "Sentinel specimens also cannot be linked to NEON sites.</li>"
              f"<li><strong>{fmt(int(fallback.sum()))} specimens used a fallback prompt</strong> (no detection or incomplete part labels); check <code>det_source</code>.</li>"
              f"<li><strong>Quality flags are not a review.</strong> {fmt(int(meas['qc_low_solidity'].fillna(False).sum()))} masks have solidity below 0.5 and "
-             f"{fmt(int(meas['touches_edge'].fillna(False).sum()))} touch the photo's edge. Nobody inspected the masks one by one.</li>"
+             f"{fmt(int(meas['trunk_touches_edge'].fillna(False).sum()))} specimens have a body cut by the photo's edge. Nobody inspected the masks one by one.</li>"
              "<li><strong>Ventral and lateral photos</strong> are segmented like dorsal ones; filter on <code>view</code> before using their measurements.</li></ul>")
 
     # ---- provenance -----------------------------------------------------------------------------

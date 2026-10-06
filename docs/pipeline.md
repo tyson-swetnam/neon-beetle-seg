@@ -32,6 +32,10 @@ each pool skips images already present in its shards.
 1. Grounding DINO on the whole photo, prompt "a beetle.", box threshold 0.25.
 2. Boxes covering more than 20% of the photo are dropped (the tray itself), then non-maximum
    suppression at IoU 0.5, which also drops a box mostly contained in a higher-scoring one.
+   On ethanol trays a second, tiled pass (1856 px tiles, 25% overlap, boxes cut by an inner tile
+   edge dropped) runs as well. Its result replaces the whole-photo result only when it finds
+   more than 25% + 3 more specimens (`det_source = grounding_dino_tiled`): whole-photo detection
+   is more precise on ordinary trays but collapses on trays of a hundred or more small beetles.
 3. SAM 2.1 gives one mask per box, each on its own padded crop.
 4. BeetleFlow labels head, pronotum, elytra, legs and antennae on a tight crop of each specimen;
    labels outside the specimen's own mask are discarded so neighbours do not leak in.
@@ -42,7 +46,10 @@ rulers, grids or colour cards around it.
 1. Grounding DINO as above; the most confident box wins, larger boxes winning near-ties.
 2. If nothing is detected, the largest blob that differs from the backdrop colour becomes the
    box (`det_source = backdrop_blob`); failing that, the whole frame (`full_frame`).
-3. SAM 2.1 and BeetleFlow as above.
+3. SAM 2.1 and BeetleFlow as above. When the box is the whole frame (a tight crop on a plain
+   backdrop) SAM often returns the backdrop instead of the specimen. A mask covering more than
+   half of its window's border is therefore replaced by the largest blob of its complement
+   (`mask_fix = inverted_backdrop`).
 
 **`crop`** (sentinel-beetles): the image is already a tight crop of one pinned specimen.
 
@@ -66,6 +73,8 @@ a trusted scale.
 | `body_length_parts_px` | extent of head + pronotum + elytra along the body axis; the preferred body length |
 | `elytra_length_px`, `elytra_width_px` | extent of the elytra along and across the body axis |
 | `pronotum_length_px`, `pronotum_width_px`, `head_width_px` | likewise for pronotum and head |
+| `elytra_midline_length_px` | elytra length along the midline, base to apex; how both annotated datasets define elytra length |
+| `elytra_base_width_px`, `pronotum_base_width_px` | widths at the pronotum-elytra junction (the 2018 volunteers' elytra width; Hawaii's basal pronotum width) |
 
 The body axis is the principal axis of the head, pronotum and elytra pixels together. Shape
 metrics on masks larger than 768 px are computed on a downscaled copy and scaled back; areas are
@@ -75,7 +84,7 @@ exact.
 
 | `scale_source` | Where | How |
 |---|---|---|
-| `zooniverse_scalebar` | 2018 trays | a volunteer drew the 1 cm bar; the median over annotators is used |
+| `checkerboard` | 2018 trays | the side of the white squares of the 1 cm checkerboard in each photo, measured from the image. The volunteers' scale-bar annotation is not used: two of the five Zooniverse workflows record it in a different pixel frame (see [history.md](history.md)) |
 | `hawaii_scalebar` | Hawaii trays | annotated 1 cm bar |
 | `ruler_ticks` | sentinel | each crop is linked to a crop of the millimetre ruler from the same tray photo; the tick spacing is the dominant period of the dark-stroke profile |
 | `printed_bar` | Biorepository macro photos | the thin printed bar is located as a long isolated horizontal line and its label ("5 mm", "1 mm") is read by OCR |
@@ -105,7 +114,9 @@ Filter on these before analysis:
 | `qc_has_scale` | millimetre values are available |
 | `parts_ok` | BeetleFlow found elytra, so elytra measurements exist |
 | `parts_complete` | head, pronotum and elytra were all found, so `body_length_parts_*` is meaningful |
-| `qc_low_solidity` | solidity below 0.5: the mask is probably wrong or the specimen badly splayed |
-| `touches_edge` | the mask reaches the photo's edge: cut-off specimen or a bad prompt |
+| `qc_low_solidity` | mask area under half of its convex hull: splayed legs (common in ethanol specimens) or a poor mask |
+| `trunk_touches_edge` | head, pronotum or elytra reach the photo's edge: the body is cut off |
+| `touches_edge` | any part of the mask reaches the edge; true for most tight crops, where legs and antennae run out of frame |
+| `mask_fix` | `inverted_backdrop` when SAM returned the backdrop and the mask is its complement |
 | `det_source` | how the box was obtained; `full_frame` and `backdrop_blob` are fallbacks |
 | `view` (image manifest) | `ventral` and `lateral` photos give masks but not dorsal measurements |

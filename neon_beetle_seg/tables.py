@@ -91,16 +91,34 @@ def fix_annotation_frame(el: pd.DataFrame) -> pd.DataFrame:
     return el
 
 
-def add_base_widths(inst: pd.DataFrame) -> pd.DataFrame:
-    """Junction widths from the stored part masks (see measure.base_widths)."""
+def add_base_widths(inst: pd.DataFrame, sizes: dict[str, tuple[int, int]]) -> pd.DataFrame:
+    """Measurements derived from the stored part masks: junction widths, midline elytra length
+    (see measure.base_widths) and whether the body itself is cut off by the photo's edge.
+
+    `touches_edge` is true for most tight crops, because legs and antennae run out of frame.
+    `trunk_touches_edge` asks the question that matters for body measurements: do head, pronotum
+    or elytra reach the edge of the photo? `sizes` maps image_id to (width, height); for images
+    without a recorded size the parts window is the whole image (the crop route).
+    """
+    empty = dict(elytra_midline_length_px=None, elytra_base_width_px=None, pronotum_base_width_px=None,
+                 trunk_touches_edge=None)
     rows = []
     for r in inst.itertuples():
         if not isinstance(getattr(r, "elytra_rle", None), str):
-            rows.append(dict(elytra_midline_length_px=None, elytra_base_width_px=None, pronotum_base_width_px=None))
+            rows.append(dict(empty))
             continue
         h, w = int(r.parts_h), int(r.parts_w)
-        rows.append(measure.base_widths(*(measure.rle_decode(getattr(r, f"{n}_rle"), h, w)
-                                          for n in ("head", "pronotum", "elytra"))))
+        head, pronotum, elytra = (measure.rle_decode(getattr(r, f"{n}_rle"), h, w) for n in ("head", "pronotum", "elytra"))
+        row = measure.base_widths(head, pronotum, elytra)
+        ys, xs = np.nonzero(head | pronotum | elytra)
+        if len(xs):
+            W, H = sizes.get(r.image_id) or (int(r.pwin_x1) + w, int(r.pwin_y1) + h)
+            x1, y1 = r.pwin_x1 + xs.min(), r.pwin_y1 + ys.min()
+            x2, y2 = r.pwin_x1 + xs.max(), r.pwin_y1 + ys.max()
+            row["trunk_touches_edge"] = bool(x1 <= 1 or y1 <= 1 or x2 >= W - 2 or y2 >= H - 2)
+        else:
+            row["trunk_touches_edge"] = None
+        rows.append(row)
     return pd.concat([inst.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
 
 
@@ -150,7 +168,9 @@ def collect() -> dict[str, int]:
     else:  # annotated scales only
         sc = man.loc[man["px_per_mm"].notna(), ["image_id", "px_per_mm", "scale_source"]].assign(scale_confidence=1.0)
 
-    inst = add_base_widths(inst)
+    sized = man[man["width"].notna() & man["height"].notna()]
+    sizes = {i: (int(w), int(h)) for i, w, h in zip(sized["image_id"], sized["width"], sized["height"])}
+    inst = add_base_widths(inst, sizes)
     inst.to_parquet(config.TABLES / "instances.parquet", index=False)
     images.to_parquet(config.TABLES / "image_results.parquet", index=False)
 

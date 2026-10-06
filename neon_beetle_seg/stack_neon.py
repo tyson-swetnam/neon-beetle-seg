@@ -25,13 +25,46 @@ TABLES = [
 ]
 
 
+class _TokenRequests:
+    """Stand-in for the `requests` module inside neonutilities' API helper.
+
+    Before every API call neonutilities 2.0.2 makes an *anonymous* connectivity check. A product
+    with ~3,000 site-months makes thousands of calls, the anonymous checks exhaust the
+    unauthenticated rate limit, the API answers 429 and the download aborts with "Cannot access
+    NEON API". This wrapper sends the token with every request to NEON and answers the repeated
+    connectivity check from its first result.
+    """
+
+    def __init__(self, token: str):
+        import requests
+
+        self._requests, self._token, self._check = requests, token, None
+
+    def __getattr__(self, name):
+        return getattr(self._requests, name)
+
+    def get(self, url, headers=None, **kwargs):
+        is_check = url.endswith("products/DP1.00001.001")
+        if is_check and self._check is not None:
+            return self._check
+        headers = dict(headers or {})
+        if "neonscience.org" in url:
+            headers.setdefault("X-API-Token", self._token)
+        r = self._requests.get(url, headers=headers, **kwargs)
+        if is_check and r.status_code == 200:
+            self._check = r
+        return r
+
+
 def download(release: str = "current", include_provisional: bool = True) -> dict:
     import neonutilities as nu
+    from neonutilities.helper_mods import api_helpers
 
     token = config.load_secrets().get("NEON_TOKEN")
     if not token:
         raise SystemExit(f"NEON_TOKEN is not set (looked in the environment and {config.SECRETS_FILE}); "
                          "the NEON data API returns 403 without one.")
+    api_helpers.requests = _TokenRequests(token)
     return nu.load_by_product(
         dpid=config.NEON_PRODUCT, site="all", package="expanded", release=release,
         include_provisional=include_provisional, check_size=False, progress=False, token=token,
