@@ -1,4 +1,7 @@
-"""Download Biorepository images listed in biorepo_images.parquet to local disk.
+"""Download the Biorepository's beetle images listed in biorepo_images.parquet to local disk.
+
+Photographs of bycatch (reptiles, amphibians, mammals) are catalogued in biorepo_images with
+their URLs but are not downloaded: they are not beetles and are not segmented.
 
 Resumable: files already on disk are only re-hashed. Writes data/tables/biorepo_image_files.parquet
 with one row per image (local path, bytes, sha256, pixel size, status) so every later step can
@@ -17,6 +20,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from . import config
+from .fetch_biorepo import CARABID_GROUPS
 
 USER_AGENT = "neon-beetle-seg/0.2 (+https://github.com/tyson-swetnam/neon-beetle-seg)"
 WORKERS = 6  # stay polite to the portal
@@ -66,6 +70,7 @@ def _fetch_one(client: httpx.Client, image_id: str, url: str) -> dict:
 def main() -> None:
     config.ensure_dirs()
     images = pd.read_parquet(config.TABLES / "biorepo_images.parquet")
+    images = images[images["specimen_group"].isin(CARABID_GROUPS)]
     jobs = list(zip(images["image_id"], images["image_url"]))
     with httpx.Client(follow_redirects=True, timeout=120, headers={"User-Agent": USER_AGENT}) as client:
         with ThreadPoolExecutor(WORKERS) as pool:

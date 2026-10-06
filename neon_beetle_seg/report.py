@@ -202,7 +202,8 @@ def build() -> str:
     inst = read("instances")
     val, vtraits = read("validation_summary"), read("validation_traits")
     neon_field, spec = read("neon_fielddata"), read("specimen_manifest")
-    bio, gbif, sam3 = read("biorepo_records"), read("gbif_occurrences"), read("sam3_comparison")
+    gbif, sam3 = read("gbif_occurrences"), read("sam3_comparison")
+    colls, pres = read("biorepo_collections"), read("preserved_samples")
     scale_tbl, prov = read("image_scale"), read("run_provenance")
     todo = man[man["duplicate_of"].isna() & man["is_carabid"]]
     done_ids = set(res.loc[res["status"] == "ok", "image_id"]) if res is not None else set()
@@ -273,16 +274,46 @@ def build() -> str:
     else:
         P.append("<p><strong>Not in this build.</strong> The NEON data endpoint requires an API token, and none was available when "
                  "this was built. Run <code>nbs neon</code> with <code>NEON_TOKEN</code> set, then <code>nbs lake</code>.</p>")
-    if bio is not None:
-        b = bio.groupby("collection").agg(records=("occid", "size"), with_images=("n_images", lambda s: (s > 0).sum()),
-                                          sites=("siteID", "nunique")).reset_index()
-        b.columns = ["Biorepository collection", "Records", "With images", "Sites"]
+    # ---- everything preserved from the traps ---------------------------------------------------
+    P.append("<h2>What NEON keeps from each trap</h2>")
+    P.append("<p>A pitfall sample is sorted into carabids, other invertebrates, reptiles and amphibians, and small mammals. "
+             "A subset of carabids is pinned; the rest, and all the bycatch, is preserved in ethanol, first as one vial per trap "
+             "(trap sorting) and then pooled per plot and bout for long-term storage (archive pooling). The Biorepository holds "
+             "these as separate collections.</p>")
+    if colls is not None:
+        c = colls.copy()
         if gbif is not None:
-            g = gbif.groupby("collection").size().rename("GBIF records").reset_index().rename(columns={"collection": "Biorepository collection"})
-            b = b.merge(g, on="Biorepository collection", how="left")
-        P.append("<h3>Biorepository and GBIF records</h3>" + table(b, numeric=tuple(c for c in b.columns if c != "Biorepository collection")))
-        P.append('<p class="note">GBIF republishes the Biorepository records and its media links point back to the Biorepository, '
-                 "so it contributes identifiers and taxonomy, not images.</p>")
+            c = c.merge(gbif.groupby("collection").size().rename("gbif").reset_index(), on="collection", how="left")
+        else:
+            c["gbif"] = np.nan
+        c["years"] = c["first_year"].astype(str) + "–" + c["last_year"].astype(str)
+        c = c[["collection", "collection_name", "specimen_group", "pooling", "records", "records_with_images", "images", "sites", "years", "gbif"]]
+        c.columns = ["Code", "Biorepository collection", "Group", "Level", "Records", "With images", "Images", "Sites", "Years", "On GBIF"]
+        P.append(table(c, numeric=("Records", "With images", "Images", "Sites", "On GBIF")))
+        P.append('<p class="note">GBIF republishes nine of these collections; the two invertebrate-bycatch collections are not on GBIF. '
+                 "GBIF's media links point back to the Biorepository, so it contributes identifiers and taxonomy, not images. "
+                 "Bycatch photographs are catalogued with their URLs in <code>biorepo_images</code> but were not downloaded or segmented.</p>")
+    if pres is not None and len(pres):
+        g = pres.groupby(["specimen_group", "level"]).agg(
+            samples=("sample_id", "size"), individuals=("individualCount", "sum"), sites=("siteID", "nunique"),
+            accessioned=("in_biorepository", "sum")).reset_index()
+        g["individuals"] = g["individuals"].where(g["individuals"] > 0)
+        g["pct"] = g["accessioned"] / g["samples"] * 100
+        g.columns = ["Group", "Level", "NEON samples", "Individuals counted", "Sites", "Linked to an accession", "Linked (%)"]
+        P.append("<h3>Fluid-preserved samples in NEON's tables</h3>")
+        P.append("<p>From <code>bet_sorting</code> and <code>bet_archivepooling</code>, all sites and years, each matched to its "
+                 "Biorepository record by sample ID, sample ID hash or vial barcode (<code>preserved_samples</code>).</p>")
+        P.append(table(g, numeric=("NEON samples", "Individuals counted", "Sites", "Linked to an accession", "Linked (%)"), digits={"Linked (%)": 1}))
+        P.append('<p class="note">Individuals are counted only at trap sorting, and not for bulk invertebrate bycatch. A sample with no '
+                 "linked accession has either not been shipped or accessioned yet, or was pooled into an archive vial.</p>")
+        vert = pres[pres["specimen_group"].isin(["herptile bycatch", "mammal bycatch"]) & (pres["level"] == "trap sorting")]
+        if len(vert):
+            top = vert.groupby(["specimen_group", "scientificName"]).agg(samples=("sample_id", "size"), individuals=("individualCount", "sum"),
+                                                                        sites=("siteID", "nunique")).reset_index()
+            top = top.sort_values(["specimen_group", "individuals"], ascending=[True, False]).groupby("specimen_group").head(8)
+            top.columns = ["Group", "Taxon", "Samples", "Individuals", "Sites"]
+            P.append("<details><summary>Most frequent vertebrate bycatch taxa</summary>" +
+                     table(top, numeric=("Samples", "Individuals", "Sites")) + "</details>")
 
     # ---- validation -----------------------------------------------------------------------------
     P.append("<h2>How well it works</h2>")

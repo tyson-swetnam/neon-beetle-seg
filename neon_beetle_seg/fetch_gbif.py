@@ -1,4 +1,4 @@
-"""GBIF records for the NEON Biorepository carabid collections.
+"""GBIF records for the NEON Biorepository's pitfall-trap collections (carabids and bycatch).
 
 GBIF republishes the Biorepository archives. Every GBIF media URL for these records points back
 to biorepo.neonscience.org, so GBIF adds no images; what it adds is a stable gbifID per specimen,
@@ -25,7 +25,8 @@ from . import config
 from .fetch_biorepo import parse_other_catalog_numbers
 
 API = "https://api.gbif.org/v1"
-# GBIF dataset keys of the NEON Biorepository collections that hold carabids
+# GBIF dataset keys (and DOIs) of the Biorepository collections that come from pitfall sampling.
+# The two invertebrate-bycatch collections (IVBC-TS, IVBC-AP) are not published to GBIF.
 DATASETS = {
     "CARC-PV": "8cb7c449-ba11-4464-865e-8029b8d772e8",
     "CARC-DNA": "44262c91-b3fd-48e4-8e47-1ee03ac2d496",
@@ -33,9 +34,18 @@ DATASETS = {
     "CARC-AP": "044d870e-5718-410a-9450-9c2ceac8e1d9",
     "CARC-TS": "2564e9e2-0248-4a3b-8344-24fc0956ed73",
     "NEON-IV": "69f3ca43-ed03-4ed1-92c4-58f9bd0eafc1",
+    "HEVC-GBTS": "c113d947-5dcf-4a52-aaa2-735dba1089b7",
+    "HEVC-GBAP": "c8e9fe8e-391b-44b9-ad94-a5d15f4b5788",
+    "MAMC-VGB": "d7b80380-1156-4d50-a261-c5b1ac1ea59a",
+}
+DATASET_DOIS = {
+    "CARC-PV": "10.15468/zyx3fn", "CARC-DNA": "10.15468/smm5vp", "DCTC": "10.15468/t6ctuu",
+    "CARC-AP": "10.15468/xicbza", "CARC-TS": "10.15468/mjtykf", "NEON-IV": "10.15468/vn96gr",
+    "HEVC-GBTS": "10.15468/zhkuay", "HEVC-GBAP": "10.15468/5ta21z", "MAMC-VGB": "10.15468/naaenf",
 }
 FIELDS = ["key", "datasetKey", "catalogNumber", "occurrenceID", "otherCatalogNumbers", "scientificName",
-          "acceptedScientificName", "taxonKey", "speciesKey", "species", "genus", "family", "taxonRank",
+          "acceptedScientificName", "taxonKey", "speciesKey", "species", "genus", "family", "order", "class",
+          "taxonRank",
           "eventDate", "year", "stateProvince", "decimalLatitude", "decimalLongitude", "license"]
 
 
@@ -74,7 +84,7 @@ def via_search() -> tuple[pd.DataFrame, dict]:
     rows, expected = [], {}
     with httpx.Client(timeout=180, headers={"User-Agent": "neon-beetle-seg/0.2"}) as client:
         for coll, key in DATASETS.items():
-            base = {"datasetKey": key, "familyKey": config.CARABIDAE_KEY}
+            base = {"datasetKey": key}
             facets = _get(client, {**base, "limit": 0, "facet": ["year", "stateProvince"], "facetLimit": 200})
             expected[coll] = facets["count"]
             by_field = {f["field"]: [c["name"] for c in f["counts"]] for f in facets.get("facets", [])}
@@ -94,15 +104,12 @@ def via_search() -> tuple[pd.DataFrame, dict]:
             print(f"  {coll}: {len(rows) - n0:,} of {expected[coll]:,} records", flush=True)
     df = pd.DataFrame(rows).drop_duplicates("key")
     prov = {"method": "occurrence/search", "accessed": time.strftime("%Y-%m-%d"), "datasets": DATASETS,
-            "filter": {"familyKey": config.CARABIDAE_KEY}, "expected": expected, "fetched": int(len(df))}
+            "expected": expected, "fetched": int(len(df))}
     return df, prov
 
 
 def via_download(user: str, pwd: str, email: str) -> tuple[pd.DataFrame, dict]:
-    predicate = {"type": "and", "predicates": [
-        {"type": "in", "key": "DATASET_KEY", "values": list(DATASETS.values())},
-        {"type": "equals", "key": "FAMILY_KEY", "value": str(config.CARABIDAE_KEY)},
-    ]}
+    predicate = {"type": "in", "key": "DATASET_KEY", "values": list(DATASETS.values())}
     body = {"creator": user, "notificationAddresses": [email], "sendNotification": False,
             "format": "SIMPLE_CSV", "predicate": predicate}
     with httpx.Client(timeout=300, auth=(user, pwd)) as client:
@@ -129,6 +136,7 @@ def via_download(user: str, pwd: str, email: str) -> tuple[pd.DataFrame, dict]:
         "occurrenceID": raw["occurrenceID"], "otherCatalogNumbers": None, "scientificName": raw["scientificName"],
         "acceptedScientificName": raw.get("verbatimScientificName"), "taxonKey": raw["taxonKey"],
         "speciesKey": raw["speciesKey"], "species": raw["species"], "genus": raw["genus"], "family": raw["family"],
+        "order": raw["order"], "class": raw["class"],
         "taxonRank": raw["taxonRank"], "eventDate": raw["eventDate"], "year": raw["year"],
         "stateProvince": raw["stateProvince"], "decimalLatitude": raw["decimalLatitude"],
         "decimalLongitude": raw["decimalLongitude"], "license": raw["license"],

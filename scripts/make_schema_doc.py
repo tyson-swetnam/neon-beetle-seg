@@ -15,7 +15,7 @@ META = {"taxon_terms": "NCBITaxon term for each scientific name (EMBL-EBI OLS4 l
         "column_tags": "Column -> ontology term and unit",
         "run_provenance": "Models, dataset revisions, package versions and git commit of this build"}
 GROUPS = [
-    ("NEON trap tables", lambda n: n.startswith("neon_") or n == "specimen_manifest"),
+    ("NEON trap tables", lambda n: n.startswith("neon_") or n in ("specimen_manifest", "preserved_samples")),
     ("Biorepository and GBIF", lambda n: n.startswith(("biorepo_", "gbif_"))),
     ("Images", lambda n: n.startswith("image_")),
     ("Segmentation results", lambda n: n in ("instances", "measurements")),

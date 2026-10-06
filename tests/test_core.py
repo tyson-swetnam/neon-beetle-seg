@@ -14,7 +14,8 @@ from neon_beetle_seg.segment import border_coverage, fix_backdrop_mask
 def test_parse_other_catalog_numbers_biorepo_and_gbif_separators():
     bio = "NEON sampleID: GRSM_012.20160906.PTEACU1.01; NEON sampleID Hash: abc=; NEON sampleUUID: 634a-uuid"
     assert parse_other_catalog_numbers(bio) == {
-        "neon_sampleID": "GRSM_012.20160906.PTEACU1.01", "neon_barcode": None, "neon_sampleUUID": "634a-uuid"}
+        "neon_sampleID": "GRSM_012.20160906.PTEACU1.01", "neon_sampleID_hash": "abc=", "neon_barcode": None,
+        "neon_sampleUUID": "634a-uuid"}
     gbif = "NEON sampleID: STER_032.20190904.CRADUB.01|NEON sampleCode (barcode): A00000121908|NEON sampleUUID: ee-1"
     out = parse_other_catalog_numbers(gbif)
     assert out["neon_barcode"] == "A00000121908" and out["neon_sampleID"] == "STER_032.20190904.CRADUB.01"
@@ -27,6 +28,7 @@ def test_parse_other_catalog_numbers_biorepo_and_gbif_separators():
     ("CARC-AP", "https://x/CPER_005.20160714.DISPAR1.01.8_ventral.jpg", ("individual", "ventral")),
     ("CARC-PV", "https://x/NEON.BET.D14.001435_Dorsal_2x._lg.jpg", ("pinned", "dorsal")),
     ("DCTC", "https://x/NEONcarabid8375.jpg", ("pinned", None)),
+    ("HEVC-GBTS", "https://x/A00000091986_dorsal.jpg", ("bycatch", "dorsal")),
 ])
 def test_classify_image(collection, url, expected):
     assert classify_image(collection, url, None) == expected

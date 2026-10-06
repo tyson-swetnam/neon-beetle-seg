@@ -44,10 +44,15 @@ DESCRIPTIONS = {
     "neon_issueLog": ("NEON issue log for the product", "NEON DP1.10022.001"),
     "neon_validation": ("NEON ingest validation rules", "NEON DP1.10022.001"),
     "specimen_manifest": ("One row per pinned individual with best identification and Biorepository link", "derived"),
-    "biorepo_records": ("NEON Biorepository occurrence records for the carabid collections", "biorepo.neonscience.org Darwin Core Archives"),
-    "biorepo_images": ("Every image attached to a Biorepository carabid record", "biorepo.neonscience.org Darwin Core Archives"),
-    "biorepo_image_files": ("Download result for each Biorepository image (bytes, sha256, pixel size)", "derived"),
-    "gbif_occurrences": ("GBIF records for the same collections: gbifID and backbone taxonomy", "GBIF"),
+    "preserved_samples": ("One row per fluid-preserved sample from pitfall traps (bulk carabids, invertebrate, herptile and mammal bycatch) with its Biorepository accession", "derived"),
+    "biorepo_collections": ("The 11 Biorepository collections that come from pitfall sampling: what each holds, how it is preserved, which NEON field it comes from", "biorepo.neonscience.org collection API"),
+    "biorepo_records": ("NEON Biorepository occurrence records: pinned and bulk carabids, DNA extracts, and bycatch", "biorepo.neonscience.org Darwin Core Archives"),
+    "biorepo_identifications": ("Determination history of each Biorepository record", "biorepo.neonscience.org Darwin Core Archives"),
+    "biorepo_measurements": ("measurementOrFact rows of each Biorepository record (habitat, soil order)", "biorepo.neonscience.org Darwin Core Archives"),
+    "biorepo_material_samples": ("Material-sample rows (preparations) for the collections that have them", "biorepo.neonscience.org Darwin Core Archives"),
+    "biorepo_images": ("Every image attached to a Biorepository record, bycatch photographs included", "biorepo.neonscience.org Darwin Core Archives"),
+    "biorepo_image_files": ("Download result for each Biorepository beetle image (bytes, sha256, pixel size)", "derived"),
+    "gbif_occurrences": ("GBIF records for the collections published there (carabids, herptile and mammal bycatch): gbifID and backbone taxonomy", "GBIF"),
     "image_manifest": ("One row per image across all four image pools, with NEON join keys", "derived"),
     "image_scale": ("Pixel-per-millimetre scale per image and how it was obtained", "derived"),
     "image_results": ("Processing status per image", "pipeline"),
@@ -155,7 +160,7 @@ def build() -> pd.DataFrame:
     meta = {n: pd.read_csv(config.METADATA / f"{n}.csv") for n in ("column_tags", "obo_terms", "landcover_terms")}
     names: set[str] = set()
     for tbl, col in (("specimen_manifest", "bestScientificName"), ("measurements", "scientificName"),
-                     ("biorepo_records", "scientificName")):
+                     ("biorepo_records", "scientificName"), ("preserved_samples", "scientificName")):
         p = config.TABLES / f"{tbl}.parquet"
         if p.exists():
             names |= set(pd.read_parquet(p, columns=[col])[col].dropna().unique())

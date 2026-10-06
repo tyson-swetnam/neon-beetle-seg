@@ -243,6 +243,12 @@ class Sam3:
         inputs = self.processor(images=image, text=text, return_tensors="pt").to(device())
         with autocast():
             outputs = self.model(**inputs)
+        # post-processing upsamples every instance mask to the full image as int64; on a tray
+        # of a hundred beetles that is several GiB, so it is done in main memory, not on the GPU
+        for key, value in list(outputs.items()):
+            if isinstance(value, torch.Tensor):
+                outputs[key] = value.float().cpu()
+        torch.cuda.empty_cache()
         res = self.processor.post_process_instance_segmentation(
             outputs, threshold=threshold, mask_threshold=mask_threshold, target_sizes=[image.size[::-1]],
         )[0]

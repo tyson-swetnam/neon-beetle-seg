@@ -23,7 +23,7 @@ from .segment import MAX_BOX_FRAC_TRAY
 from .validate import _match
 
 Image.MAX_IMAGE_PIXELS = None
-MAX_SIDE = 2784  # SAM 3 returns full-size masks for every instance; half-resolution trays keep that in memory
+MAX_SIDE = 2048  # SAM 3 returns a full-size mask per instance; a reduced tray keeps a 266-beetle tray in memory
 
 
 def _mask_boxes(masks: np.ndarray) -> np.ndarray:

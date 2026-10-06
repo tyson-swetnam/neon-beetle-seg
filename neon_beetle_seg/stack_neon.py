@@ -10,10 +10,13 @@ Outputs (parquet, in data/tables/):
   neon_<table>          one per stacked NEON table
   neon_variables, neon_categoricalCodes, neon_issueLog   NEON's own data dictionary and issue log
   specimen_manifest     one row per pinned individual with its best available identification
+  preserved_samples     one row per fluid-preserved sample (bulk carabids and bycatch), linked to
+                        its Biorepository accession
 """
 from __future__ import annotations
 
 import json
+import os
 
 import pandas as pd
 
@@ -28,7 +31,7 @@ TABLES = [
 class _TokenRequests:
     """Stand-in for the `requests` module inside neonutilities' API helper.
 
-    Before every API call neonutilities 2.0.2 makes an *anonymous* connectivity check. A product
+    Before every API call (GET or HEAD) neonutilities 2.0.2 makes an *anonymous* connectivity check. A product
     with ~3,000 site-months makes thousands of calls, the anonymous checks exhaust the
     unauthenticated rate limit, the API answers 429 and the download aborts with "Cannot access
     NEON API". This wrapper sends the token with every request to NEON and answers the repeated
@@ -38,22 +41,28 @@ class _TokenRequests:
     def __init__(self, token: str):
         import requests
 
-        self._requests, self._token, self._check = requests, token, None
+        self._requests, self._token, self._checks = requests, token, {}
 
     def __getattr__(self, name):
         return getattr(self._requests, name)
 
-    def get(self, url, headers=None, **kwargs):
+    def _call(self, method: str, url, headers=None, **kwargs):
         is_check = url.endswith("products/DP1.00001.001")
-        if is_check and self._check is not None:
-            return self._check
+        if is_check and method in self._checks:
+            return self._checks[method]
         headers = dict(headers or {})
-        if "neonscience.org" in url:
+        if "neonscience.org" in url:  # never send the token to the signed storage URLs
             headers.setdefault("X-API-Token", self._token)
-        r = self._requests.get(url, headers=headers, **kwargs)
+        r = getattr(self._requests, method)(url, headers=headers, **kwargs)
         if is_check and r.status_code == 200:
-            self._check = r
+            self._checks[method] = r
         return r
+
+    def get(self, url, headers=None, **kwargs):
+        return self._call("get", url, headers, **kwargs)
+
+    def head(self, url, headers=None, **kwargs):
+        return self._call("head", url, headers, **kwargs)
 
 
 def download(release: str = "current", include_provisional: bool = True) -> dict:
@@ -65,10 +74,15 @@ def download(release: str = "current", include_provisional: bool = True) -> dict
         raise SystemExit(f"NEON_TOKEN is not set (looked in the environment and {config.SECRETS_FILE}); "
                          "the NEON data API returns 403 without one.")
     api_helpers.requests = _TokenRequests(token)
-    return nu.load_by_product(
-        dpid=config.NEON_PRODUCT, site="all", package="expanded", release=release,
-        include_provisional=include_provisional, check_size=False, progress=False, token=token,
-    )
+    cwd = os.getcwd()
+    os.chdir(config.NEON_DIR)  # neonutilities unpacks into ./filesToStack<product> while it works
+    try:
+        return nu.load_by_product(
+            dpid=config.NEON_PRODUCT, site="all", package="expanded", release=release,
+            include_provisional=include_provisional, check_size=False, progress=False, token=token,
+        )
+    finally:
+        os.chdir(cwd)
 
 
 def _clean(df: pd.DataFrame) -> pd.DataFrame:
@@ -134,6 +148,79 @@ def link_biorepository(man: pd.DataFrame) -> pd.DataFrame:
     return man
 
 
+SPECIMEN_GROUPS = {  # bet_sorting / bet_archivepooling sampleType -> group used across the lake
+    "carabid": "bulk carabid", "other carabid": "bulk carabid", "invert bycatch": "invertebrate bycatch",
+    "vert bycatch herp": "herptile bycatch", "vert bycatch mam": "mammal bycatch",
+}
+
+
+def preserved_samples(sorting: pd.DataFrame, pooling: pd.DataFrame | None) -> pd.DataFrame:
+    """One row per fluid-preserved sample NEON keeps from pitfall traps, linked to its accession.
+
+    Two levels: the vials made when a trap sample is sorted (bet_sorting: one per trap and taxon,
+    or one of bulk invertebrate bycatch per trap), and the archive vials those are pooled into
+    per plot and bout (bet_archivepooling). Pinned individuals are in specimen_manifest instead.
+
+    The Biorepository link tries the sample ID, then its hash (NEON publishes some IDs only
+    hashed, and the Biorepository records carry the same hash), then the vial barcode.
+    """
+    common = ["domainID", "siteID", "plotID", "setDate", "collectDate", "sampleType", "taxonID", "scientificName",
+              "sampleCondition", "remarks", "release"]
+    s = sorting.reindex(columns=common + ["trapID", "sampleID", "subsampleID", "subsampleCode", "individualCount",
+                                          "taxonRank", "identifiedBy"]).copy()
+    s = s[s["subsampleID"].notna()]
+    s = s.rename(columns={"subsampleID": "sample_id", "subsampleCode": "barcode", "sampleID": "trap_sampleID"})
+    s.insert(0, "level", "trap sorting")
+    parts = [s]
+    if pooling is not None and len(pooling):
+        a = pooling.reindex(columns=common + ["archiveVialID", "archiveSampleCode", "subsampleIDList",
+                                              "pooledFromMultiplePlots"]).copy()
+        a = a[a["archiveVialID"].notna()]
+        a["n_pooled_subsamples"] = a["subsampleIDList"].fillna("").map(lambda v: len([x for x in v.split("|") if x]))
+        a = a.rename(columns={"archiveVialID": "sample_id", "archiveSampleCode": "barcode"}).drop(columns=["subsampleIDList"])
+        a.insert(0, "level", "archive pooling")
+        parts.append(a)
+    out = pd.concat(parts, ignore_index=True).drop_duplicates(["level", "sample_id"])
+    out["specimen_group"] = out["sampleType"].map(SPECIMEN_GROUPS).fillna(out["sampleType"])
+    out["individualCount"] = pd.to_numeric(out.get("individualCount"), errors="coerce")
+    out["year"] = pd.to_datetime(out["collectDate"], errors="coerce", utc=True).dt.year.astype("Int64")
+
+    bio_path = config.TABLES / "biorepo_records.parquet"
+    if bio_path.exists():
+        bio = pd.read_parquet(bio_path, columns=["catalogNumber", "collection", "occid", "n_images", "neon_sampleID",
+                                                 "neon_sampleID_hash", "neon_barcode"])
+        link = pd.Series(pd.NA, index=out.index, dtype="object")
+        how = pd.Series(pd.NA, index=out.index, dtype="object")
+        for key, col, label in (("sample_id", "neon_sampleID", "sample ID"), ("sample_id", "neon_sampleID_hash", "sample ID hash"),
+                                ("barcode", "neon_barcode", "barcode")):
+            lookup = bio[bio[col].notna()].drop_duplicates(col).set_index(col)["catalogNumber"]
+            hit = out[key].map(lookup)
+            fill = link.isna() & hit.notna()
+            link[fill], how[fill] = hit[fill], label
+        out["biorepo_catalogNumber"], out["biorepo_link"] = link, how
+        acc = bio.drop_duplicates("catalogNumber").set_index("catalogNumber")
+        out["biorepo_collection"] = out["biorepo_catalogNumber"].map(acc["collection"])
+        out["biorepo_occid"] = out["biorepo_catalogNumber"].map(acc["occid"])
+        out["biorepo_n_images"] = out["biorepo_catalogNumber"].map(acc["n_images"]).fillna(0).astype(int)
+        out["in_biorepository"] = out["biorepo_catalogNumber"].notna()
+        gbif_path = config.TABLES / "gbif_occurrences.parquet"
+        if gbif_path.exists():
+            g = pd.read_parquet(gbif_path, columns=["gbifID", "catalogNumber"]).drop_duplicates("catalogNumber")
+            out["gbifID"] = out["biorepo_catalogNumber"].map(g.set_index("catalogNumber")["gbifID"])
+    return out
+
+
+def derive() -> dict[str, int]:
+    """(Re)build the derived tables from the stacked NEON tables already on disk."""
+    read = lambda n: pd.read_parquet(config.TABLES / f"neon_{n}.parquet") if (config.TABLES / f"neon_{n}.parquet").exists() else None  # noqa: E731
+    man = specimen_manifest(read("parataxonomistID"), read("expertTaxonomistIDProcessed"), read("fielddata"))
+    man = link_biorepository(man)
+    man.to_parquet(config.TABLES / "specimen_manifest.parquet", index=False)
+    pres = preserved_samples(read("sorting"), read("archivepooling"))
+    pres.to_parquet(config.TABLES / "preserved_samples.parquet", index=False)
+    return {"specimen_manifest": len(man), "preserved_samples": len(pres)}
+
+
 def build(release: str = "current", include_provisional: bool = True) -> dict[str, int]:
     config.ensure_dirs()
     data = download(release, include_provisional)
@@ -155,16 +242,15 @@ def build(release: str = "current", include_provisional: bool = True) -> dict[st
     notes = {k: str(v) for k, v in data.items() if not isinstance(v, pd.DataFrame)}
     (config.NEON_DIR / "citations_and_readme.json").write_text(json.dumps(notes, indent=1))
 
-    man = specimen_manifest(stacked["bet_parataxonomistID"], stacked.get("bet_expertTaxonomistIDProcessed"),
-                            stacked.get("bet_fielddata"))
-    man = link_biorepository(man)
-    man.to_parquet(config.TABLES / "specimen_manifest.parquet", index=False)
-    counts["specimen_manifest"] = len(man)
+    counts.update(derive())
     return counts
 
 
 def main() -> None:
-    counts = build()
+    import sys
+
+    # `nbs neon --derive` rebuilds specimen_manifest and preserved_samples without downloading
+    counts = derive() if "--derive" in sys.argv else build()
     for k, v in counts.items():
         print(f"{k:40s} {v:>9,}")
     fd = pd.read_parquet(config.TABLES / "neon_fielddata.parquet")
