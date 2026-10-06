@@ -1,7 +1,9 @@
 """Experiment: check the ruler-tick reader against Hawaii's human scale-bar annotations."""
-import numpy as np, pandas as pd
+import pandas as pd
 from PIL import Image
+
 from neon_beetle_seg import config, scale
+
 Image.MAX_IMAGE_PIXELS = None
 tr = pd.read_parquet(config.TABLES / "trait_annotations_hawaii.parquet")
 one = tr.drop_duplicates("image_id").sample(40, random_state=0)

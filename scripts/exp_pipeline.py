@@ -1,7 +1,12 @@
 """Experiment: run the pipeline on a few images per route, time it and draw overlays."""
-import sys, time
-import cv2, numpy as np, pandas as pd, torch
-from neon_beetle_seg import config, measure, models, segment
+import time
+
+import cv2
+import numpy as np
+import pandas as pd
+import torch
+
+from neon_beetle_seg import config, measure, segment
 
 man = pd.read_parquet(config.TABLES / "image_manifest.parquet")
 man = man[man.duplicate_of.isna() & man.is_carabid]

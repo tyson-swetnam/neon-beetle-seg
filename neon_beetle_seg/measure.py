@@ -146,3 +146,54 @@ def part_metrics(labels: np.ndarray, body: np.ndarray | None = None) -> dict:
     if part["head"].sum() >= 9:
         out["head_width_px"] = _axis_extent(largest_component(part["head"], fill_holes=False), axis)[1] / sc
     return out
+
+
+def base_widths(head: np.ndarray, pronotum: np.ndarray, elytra: np.ndarray, slab: float = 0.15) -> dict:
+    """Caliper-style measurements at the pronotum-elytra junction and along the midline.
+
+    elytra_midline_length_px along the body axis within the central fifth of the elytra's width:
+                             from the middle of the elytra's base to the middle of the apex,
+                             which is how both annotated datasets define elytra length. The
+                             full extent (elytra_length_px) also counts the shoulders, which
+                             project forward of the base's midpoint.
+    elytra_base_width_px     width across both elytra within the anterior `slab` of their length
+                             (the humeral width; the 2018 Zooniverse "ElytraWidth" lines sit here)
+    pronotum_base_width_px   width of the pronotum within its posterior `slab`
+                             (the Hawaii "basal pronotum width")
+    "Anterior" is the end of the elytra nearer the pronotum (or head, when no pronotum was found).
+    """
+    out = dict(elytra_midline_length_px=None, elytra_base_width_px=None, pronotum_base_width_px=None)
+    trunk = head | pronotum | elytra
+    if elytra.sum() < 25 or not trunk.any():
+        return out
+    (elytra, pronotum, head, trunk), sc = zip(*[_downscale(m) for m in (elytra, pronotum, head, trunk)])
+    sc = sc[0]
+    elytra, pronotum, head, trunk = (m.astype(bool) for m in (elytra, pronotum, head, trunk))
+    axis = body_axis(largest_component(trunk, fill_holes=False))
+    front = pronotum if pronotum.sum() >= 9 else head
+    if axis is None or front.sum() < 9:
+        return out
+
+    def coords(mask):
+        ys, xs = np.nonzero(mask)
+        return xs * axis[0] + ys * axis[1], -xs * axis[1] + ys * axis[0]
+
+    ea, ep = coords(largest_component(elytra, fill_holes=False))
+    fa, fp = coords(largest_component(front, fill_holes=False))
+    mid = np.abs(ep - (ep.min() + ep.max()) / 2) <= 0.1 * (ep.max() - ep.min() + 1)
+    if mid.sum() >= 3:
+        out["elytra_midline_length_px"] = float(ea[mid].max() - ea[mid].min() + 1) / sc
+    lo, hi = ea.min(), ea.max()
+    toward_front = fa.mean() < ea.mean()  # is the pronotum at the low end of the axis?
+    span = (hi - lo) * slab
+    sel = (ea <= lo + span) & (ea >= lo + 0.2 * span) if toward_front else (ea >= hi - span) & (ea <= hi - 0.2 * span)
+    if sel.sum() >= 3:
+        out["elytra_base_width_px"] = float(ep[sel].max() - ep[sel].min() + 1) / sc
+    if pronotum.sum() >= 9:
+        plo, phi = fa.min(), fa.max()
+        pspan = (phi - plo) * slab
+        # the pronotum's posterior end is the one facing the elytra
+        psel = (fa >= phi - pspan) if toward_front else (fa <= plo + pspan)
+        if psel.sum() >= 3:
+            out["pronotum_base_width_px"] = float(fp[psel].max() - fp[psel].min() + 1) / sc
+    return out

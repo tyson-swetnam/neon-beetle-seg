@@ -1,8 +1,9 @@
 """Pixel-to-millimetre scale for each image.
 
-Where a human annotated the scale bar (2018 trays, Hawaii trays) that value is already in the
-image manifest. This module reads the scale from the image itself for the rest:
+Hawaii trays use the human scale-bar annotation from the image manifest. This module reads the
+scale from the image itself for the rest:
 
+  checkerboard  the 1 cm checkerboard in the 2018 tray photos: the side of its white squares.
   ruler ticks   a millimetre ruler crop (sentinel-beetles ships one per source photo): the tick
                 spacing is the dominant period of the dark-stroke profile.
   printed bar   Biorepository macro photos carry a thin printed bar labelled "1 mm" / "5 mm":
@@ -181,21 +182,76 @@ def printed_bar_px_per_mm(image: Image.Image, reader: LabelReader) -> dict:
     return dict(px_per_mm=None, bar_px=bar["x2"] - bar["x1"], label_text=None, label_mm=None, **bar)
 
 
+# ---- checkerboard scale on the 2018 tray photos ----------------------------------------------
+def checkerboard_px_per_mm(image: Image.Image, work_side: int = 1856) -> dict:
+    """Side length of the white squares of the 1 cm checkerboard scale in the 2018 tray photos.
+
+    The board has a black outline, so its black squares merge with it, but each white square
+    is enclosed by black: a bright, square, well-filled blob the same size as its neighbours,
+    bordered by dark pixels on all four sides. Returns px_per_mm in original-image pixels, the
+    number of squares used and their relative spread.
+    """
+    w0, h0 = image.size
+    s = work_side / max(w0, h0)
+    small = image.convert("L").resize((round(w0 * s), round(h0 * s)), Image.BILINEAR) if s < 1 else image.convert("L")
+    s = small.size[0] / w0
+    g = np.asarray(small)
+    dark = g < 90
+    bright = cv2.erode((g > 150).astype(np.uint8), np.ones((3, 3), np.uint8))
+    n, _, stats, _ = cv2.connectedComponentsWithStats(bright, connectivity=4)
+    sides = []
+    H, W = g.shape
+    for i in range(1, n):
+        x, y, bw, bh, area = stats[i]
+        if bw < 0.02 * W or bw > 0.2 * W:
+            continue
+        if abs(bw - bh) > 0.12 * max(bw, bh) or area < 0.85 * bw * bh:
+            continue
+        # black just outside each of the four sides
+        m = max(3, bw // 8)
+        cx, cy = x + bw // 2, y + bh // 2
+        probes = [dark[cy, max(0, x - m)], dark[cy, min(W - 1, x + bw + m)],
+                  dark[max(0, y - m), cx], dark[min(H - 1, y + bh + m), cx]]
+        if sum(probes) < 3:  # top- and bottom-row squares face the thin outline on one side
+            continue
+        sides.append((bw + bh) / 2 + 2)  # +2 undoes the 3x3 erosion
+    if len(sides) < 2:
+        return dict(px_per_mm=None, n_squares=len(sides), spread=None)
+    sides = np.array(sides)
+    med = np.median(sides)
+    good = sides[np.abs(sides - med) < 0.08 * med]
+    if len(good) < 2:
+        return dict(px_per_mm=None, n_squares=int(len(good)), spread=None)
+    return dict(px_per_mm=float(np.median(good) / s / 10.0), n_squares=int(len(good)),
+                spread=float(good.std() / good.mean()))
+
+
 # ---- per-image scale table -------------------------------------------------------------------
 MIN_TICK_CONFIDENCE = 0.4  # autocorrelation strength below this is not a clean ruler
 MIN_TICKS = 8
 MIN_BAR_FRACTION = 0.15  # printed bars span 22-45% of the frame; shorter "bars" are other lines
 
 
-def build():
+MAX_SQUARE_SPREAD = 0.03  # checkerboard squares must agree with each other to 3%
+POOLS = ("hf2018", "hawaii", "sentinel", "biorepo")
+
+
+def build(pools: tuple[str, ...] | None = None):
     """Write data/tables/image_scale.parquet: one row per image with px_per_mm and how it was obtained.
 
     scale_source values:
-      zooniverse_scalebar   human-drawn 1 cm bar (2018 trays)
-      hawaii_scalebar       human-drawn 1 cm bar (Hawaii trays)
-      ruler_ticks           millimetre ruler crop read by ruler_px_per_mm (sentinel)
-      printed_bar           printed bar + OCR label (Biorepository macro photos)
+      checkerboard      the 1 cm checkerboard in each 2018 tray photo, measured from the image
+      hawaii_scalebar   human-drawn 1 cm bar (Hawaii trays)
+      ruler_ticks       millimetre ruler crop read by ruler_px_per_mm (sentinel)
+      printed_bar       printed bar + OCR label (Biorepository macro photos)
     Images with no trusted scale keep px_per_mm null and their measurements stay in pixels.
+
+    The 2018 trays do not use the volunteers' scale-bar annotation: for two of the five Zooniverse
+    workflows (21652, 21827) the annotation coordinates are in a smaller pixel frame than the
+    dataset's resized_image_dim column says, which would make the scale 10-22% too small. The
+    annotated value is kept in scale_detail for comparison.
+
+    `pools` limits the work to some pools; rows for the others are kept from the existing table.
     """
     import pandas as pd
     from tqdm import tqdm
@@ -203,41 +259,62 @@ def build():
     from . import config
 
     Image.MAX_IMAGE_PIXELS = None
+    pools = tuple(pools or POOLS)
     man = pd.read_parquet(config.TABLES / "image_manifest.parquet")
     man = man[man["duplicate_of"].isna() & man["is_carabid"]]
+    path = config.TABLES / "image_scale.parquet"
     rows = []
-    known = man[man["px_per_mm"].notna()]
-    rows += [dict(image_id=r.image_id, px_per_mm=r.px_per_mm, scale_source=r.scale_source, scale_confidence=1.0,
-                  scale_detail=None) for r in known.itertuples()]
+    if path.exists():
+        old = pd.read_parquet(path)
+        rows += old[~old["image_id"].str.split("/").str[0].isin(pools)].to_dict("records")
 
-    sent = man[man["source"] == "sentinel"]
-    by_bar = {}
-    for path in tqdm(sorted(sent["scalebar_path"].dropna().unique()), desc="sentinel rulers", mininterval=30):
-        by_bar[path] = ruler_px_per_mm(Image.open(config.ROOT / path))
-    for r in sent.itertuples():
-        res = by_bar.get(r.scalebar_path, {})
-        ok = bool(res.get("px_per_mm")) and res["confidence"] >= MIN_TICK_CONFIDENCE and res["n_ticks"] >= MIN_TICKS
-        rows.append(dict(image_id=r.image_id, px_per_mm=res["px_per_mm"] if ok else None,
-                         scale_source="ruler_ticks" if ok else None, scale_confidence=res.get("confidence"),
-                         scale_detail=f"ticks={res.get('n_ticks')};{res.get('orientation')}"))
+    if "hawaii" in pools:
+        for r in man[man["source"] == "hawaii"].itertuples():
+            rows.append(dict(image_id=r.image_id, px_per_mm=r.px_per_mm, scale_source=r.scale_source,
+                             scale_confidence=1.0, scale_detail=None))
 
-    pinned = man[(man["source"] == "biorepo") & (man["image_kind"] == "pinned")]
-    reader = LabelReader()
-    for r in tqdm(list(pinned.itertuples()), desc="printed bars", mininterval=30):
-        im = Image.open(config.ROOT / r.local_path).convert("RGB")
-        res = printed_bar_px_per_mm(im, reader)
-        frac = (res["bar_px"] or 0) / im.size[0]
-        ok = bool(res["px_per_mm"]) and frac >= MIN_BAR_FRACTION
-        rows.append(dict(image_id=r.image_id, px_per_mm=res["px_per_mm"] if ok else None,
-                         scale_source="printed_bar" if ok else None, scale_confidence=1.0 if ok else 0.0,
-                         scale_detail=f"bar_px={res['bar_px']};label={res['label_text']}"))
+    if "hf2018" in pools:
+        for r in tqdm(list(man[man["source"] == "hf2018"].itertuples()), desc="checkerboards", mininterval=30):
+            res = checkerboard_px_per_mm(Image.open(config.ROOT / r.local_path))
+            ok = bool(res["px_per_mm"]) and res["n_squares"] >= 2 and res["spread"] <= MAX_SQUARE_SPREAD
+            ann = "" if pd.isna(r.px_per_mm) else f";annotated_px_per_mm={r.px_per_mm:.3f}"
+            rows.append(dict(image_id=r.image_id, px_per_mm=res["px_per_mm"] if ok else None,
+                             scale_source="checkerboard" if ok else None,
+                             scale_confidence=1.0 - (res["spread"] or 0) if ok else 0.0,
+                             scale_detail=f"squares={res['n_squares']}{ann}"))
+
+    if "sentinel" in pools:
+        sent = man[man["source"] == "sentinel"]
+        by_bar = {}
+        for bar in tqdm(sorted(sent["scalebar_path"].dropna().unique()), desc="sentinel rulers", mininterval=30):
+            by_bar[bar] = ruler_px_per_mm(Image.open(config.ROOT / bar))
+        for r in sent.itertuples():
+            res = by_bar.get(r.scalebar_path, {})
+            ok = bool(res.get("px_per_mm")) and res["confidence"] >= MIN_TICK_CONFIDENCE and res["n_ticks"] >= MIN_TICKS
+            rows.append(dict(image_id=r.image_id, px_per_mm=res["px_per_mm"] if ok else None,
+                             scale_source="ruler_ticks" if ok else None, scale_confidence=res.get("confidence"),
+                             scale_detail=f"ticks={res.get('n_ticks')};{res.get('orientation')}"))
+
+    if "biorepo" in pools:
+        pinned = man[(man["source"] == "biorepo") & (man["image_kind"] == "pinned")]
+        reader = LabelReader()
+        for r in tqdm(list(pinned.itertuples()), desc="printed bars", mininterval=30):
+            im = Image.open(config.ROOT / r.local_path).convert("RGB")
+            res = printed_bar_px_per_mm(im, reader)
+            frac = (res["bar_px"] or 0) / im.size[0]
+            ok = bool(res["px_per_mm"]) and frac >= MIN_BAR_FRACTION
+            rows.append(dict(image_id=r.image_id, px_per_mm=res["px_per_mm"] if ok else None,
+                             scale_source="printed_bar" if ok else None, scale_confidence=1.0 if ok else 0.0,
+                             scale_detail=f"bar_px={res['bar_px']};label={res['label_text']}"))
     out = pd.DataFrame(rows)
-    out.to_parquet(config.TABLES / "image_scale.parquet", index=False)
+    out.to_parquet(path, index=False)
     return out
 
 
 def main() -> None:
-    out = build()
+    import sys
+
+    out = build(tuple(sys.argv[1:]) or None)
     src = out.assign(pool=out["image_id"].str.split("/").str[0], has=out["px_per_mm"].notna())
     print(src.groupby("pool").agg(images=("image_id", "size"), with_scale=("has", "sum"),
                                   median_px_per_mm=("px_per_mm", "median")).to_string())

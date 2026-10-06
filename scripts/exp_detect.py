@@ -1,8 +1,13 @@
 """Experiment: compare detectors against the 577-tray human boxes on a sample of trays."""
-import sys, time, random
+import random
+import sys
+import time
 import xml.etree.ElementTree as ET
-import numpy as np, torch
+
+import numpy as np
+import torch
 from PIL import Image
+
 from neon_beetle_seg import config, models
 
 Image.MAX_IMAGE_PIXELS = None

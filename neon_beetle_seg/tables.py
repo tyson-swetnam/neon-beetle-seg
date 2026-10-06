@@ -18,7 +18,8 @@ from . import config, measure
 
 LENGTH_COLS = ["length_px", "width_px", "perimeter_px", "ellipse_major_px", "ellipse_minor_px", "core_length_px",
                "core_width_px", "body_length_parts_px", "elytra_length_px", "elytra_width_px",
-               "pronotum_length_px", "pronotum_width_px", "head_width_px"]
+               "pronotum_length_px", "pronotum_width_px", "head_width_px", "elytra_base_width_px",
+               "pronotum_base_width_px", "elytra_midline_length_px"]
 AREA_COLS = ["area_px", "elytra_area_px", "pronotum_area_px", "head_area_px"]
 RLE_COLS = ["mask_rle", "head_rle", "pronotum_rle", "elytra_rle"]
 
@@ -57,6 +58,50 @@ def point_to_instance(inst: pd.DataFrame, points: pd.DataFrame) -> pd.Series:
     return out
 
 
+FRAME_TOLERANCE = 0.08
+
+
+def fix_annotation_frame(el: pd.DataFrame) -> pd.DataFrame:
+    """Rescale 2018 annotation lines whose pixel frame does not match the photo.
+
+    Each line comes with the annotator's own 1 cm scale bar, drawn in the same frame. Comparing
+    that bar with the checkerboard measured from the photo gives the frame factor. Where it is
+    off by more than FRAME_TOLERANCE (Zooniverse workflows 21652 and 21827) the coordinates are
+    multiplied by it. `dist_cm` is unaffected: line and bar share a frame, so their ratio holds.
+    """
+    path = config.TABLES / "image_scale.parquet"
+    el = el.copy()
+    el["frame_factor"] = 1.0
+    if not path.exists():
+        return el
+    sc = pd.read_parquet(path, columns=["image_id", "px_per_mm", "scale_source"])
+    cb = sc[sc["scale_source"] == "checkerboard"].set_index("image_id")["px_per_mm"] * 10
+    f = el["image_id"].map(cb) / el["px_per_cm_full"]
+    # one factor per photo and workflow: the median is steadier than any single drawn bar
+    f = f.groupby([el["image_id"], el["workflowID"]]).transform("median")
+    off = f.notna() & ((f - 1).abs() > FRAME_TOLERANCE)
+    el.loc[off, "frame_factor"] = f[off]
+    for c in ("x1", "y1", "x2", "y2", "dist_px_full"):
+        el[c] = el[c] * el["frame_factor"]
+    # rescaled lines land near their specimen but not reliably on it, so only lines already in
+    # the photo's frame are used to pair a human measurement with a specimen
+    el["frame_ok"] = ~off & f.notna()
+    return el
+
+
+def add_base_widths(inst: pd.DataFrame) -> pd.DataFrame:
+    """Junction widths from the stored part masks (see measure.base_widths)."""
+    rows = []
+    for r in inst.itertuples():
+        if not isinstance(getattr(r, "elytra_rle", None), str):
+            rows.append(dict(elytra_midline_length_px=None, elytra_base_width_px=None, pronotum_base_width_px=None))
+            continue
+        h, w = int(r.parts_h), int(r.parts_w)
+        rows.append(measure.base_widths(*(measure.rle_decode(getattr(r, f"{n}_rle"), h, w)
+                                          for n in ("head", "pronotum", "elytra"))))
+    return pd.concat([inst.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
+
+
 def link_annotations(inst: pd.DataFrame) -> pd.DataFrame:
     """Per-instance human annotation columns for the two annotated tray datasets."""
     cols = pd.DataFrame({"instance_id": inst["instance_id"]})
@@ -77,13 +122,14 @@ def link_annotations(inst: pd.DataFrame) -> pd.DataFrame:
 
     # 2018 trays: several volunteers drew each line; take the median per specimen and structure
     el = pd.read_parquet(config.TABLES / "elytra_annotations_2018.parquet")
+    el = fix_annotation_frame(el)
     el["x"], el["y"] = (el["x1"] + el["x2"]) / 2, (el["y1"] + el["y2"]) / 2
     el["instance_id"] = point_to_instance(inst, el)
     el.drop(columns=["x", "y"]).to_parquet(config.TABLES / "elytra_matches_2018.parquet", index=False)
-    e = el[el["instance_id"].notna()].assign(mm=lambda d: d["dist_cm"] * 10)
+    e = el[el["instance_id"].notna() & el["frame_ok"]].assign(mm=lambda d: d["dist_cm"] * 10)
     e = e.pivot_table(index="instance_id", columns="structure", values="mm", aggfunc="median").reset_index()
     e = e.rename(columns={"ElytraLength": "ann_elytra_length_mm", "ElytraWidth": "ann_elytra_width_mm"})
-    flat = el[el["instance_id"].notna()].groupby("instance_id")["lying_flat"].agg(lambda s: s.mode().iat[0])
+    flat = el[el["instance_id"].notna() & el["frame_ok"]].groupby("instance_id")["lying_flat"].agg(lambda s: s.mode().iat[0])
     e["ann_lying_flat"] = e["instance_id"].map(flat)
 
     ann = pd.concat([h, e], ignore_index=True)
@@ -102,6 +148,7 @@ def collect() -> dict[str, int]:
     else:  # annotated scales only
         sc = man.loc[man["px_per_mm"].notna(), ["image_id", "px_per_mm", "scale_source"]].assign(scale_confidence=1.0)
 
+    inst = add_base_widths(inst)
     inst.to_parquet(config.TABLES / "instances.parquet", index=False)
     images.to_parquet(config.TABLES / "image_results.parquet", index=False)
 
