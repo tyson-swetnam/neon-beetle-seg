@@ -33,6 +33,8 @@ PROMPT = "a beetle."
 BOX_THR, TEXT_THR = 0.25, 0.2
 PARTS_PAD = 0.06  # BeetleFlow was trained on detector-box crops, so keep its crop tight
 MAX_BOX_FRAC_TRAY = 0.20  # a "beetle" box covering more of a tray than this is the tray itself
+TILE = 1856  # tile side for the crowded-tray pass (a third of a 5568 px tray photo)
+TILED_GAIN, TILED_MARGIN = 1.25, 3  # tiles win only with > 25% + 3 more specimens than the whole photo
 
 
 def _open(path) -> Image.Image:
@@ -76,13 +78,30 @@ class Pipeline:
                               parts_model=self.bf.model_id if self.bf else None)
 
     # ---- per-route detection -------------------------------------------------------------
-    def boxes_tray(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray, str]:
-        det = self.gd.detect(image, PROMPT, BOX_THR, TEXT_THR)
-        if len(det):
-            w, h = image.size
-            area = (det.boxes[:, 2] - det.boxes[:, 0]) * (det.boxes[:, 3] - det.boxes[:, 1])
-            det = models.nms(det.select(area < MAX_BOX_FRAC_TRAY * w * h), 0.5, 0.8)
-        return det.boxes, det.scores, "grounding_dino"
+    @staticmethod
+    def _clean_tray(det: models.Detections, w: int, h: int) -> models.Detections:
+        if not len(det):
+            return det
+        area = (det.boxes[:, 2] - det.boxes[:, 0]) * (det.boxes[:, 3] - det.boxes[:, 1])
+        return models.nms(det.select(area < MAX_BOX_FRAC_TRAY * w * h), 0.5, 0.8)
+
+    def boxes_tray(self, image: Image.Image, tiled: bool = True) -> tuple[np.ndarray, np.ndarray, str]:
+        """Whole-photo detection, with a tiled pass as a safety net for crowded trays.
+
+        On an ordinary tray the whole photo is the better input (precision 0.985 vs 0.935 for
+        tiles, same recall). On a tray of a hundred or more small beetles it collapses: one
+        tray of 266 gave a single box. So both are run, and the tiled result is used only
+        when it finds clearly more specimens than the whole-photo pass.
+        """
+        w, h = image.size
+        whole = self._clean_tray(self.gd.detect(image, PROMPT, BOX_THR, TEXT_THR), w, h)
+        if not tiled:
+            return whole.boxes, whole.scores, "grounding_dino"
+        tiles = self._clean_tray(self.gd.detect(image, PROMPT, BOX_THR, TEXT_THR, tile=TILE), w, h)
+        if len(tiles) >= TILED_GAIN * len(whole) + TILED_MARGIN:
+            det = self._clean_tray(models.Detections.concat([whole, tiles]), w, h)
+            return det.boxes, det.scores, "grounding_dino_tiled"
+        return whole.boxes, whole.scores, "grounding_dino"
 
     def boxes_single(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray, str]:
         det = self.gd.detect(image, PROMPT, BOX_THR, TEXT_THR)
@@ -161,7 +180,11 @@ class Pipeline:
         image = _open(row.local_path)
         if row.route == "crop":
             return self.run_crop(image)
-        boxes, scores, source = self.boxes_tray(image) if row.route == "tray" else self.boxes_single(image)
+        if row.route == "tray":
+            # the tiled pass is for ethanol trays; pinned trays hold a handful of spaced specimens
+            boxes, scores, source = self.boxes_tray(image, tiled=row.image_kind == "tray_ethanol")
+        else:
+            boxes, scores, source = self.boxes_single(image)
         return self.finish(image, boxes, scores, source)
 
 
@@ -227,13 +250,48 @@ def run(source: str, limit: int | None = None, flush_every: int = 200, parts: bo
     print(f"{source}: done {n:,} images in {(time.time() - t0) / 60:.1f} min", flush=True)
 
 
+def recheck_trays(source: str = "hf2018") -> list[str]:
+    """Re-run detection on trays processed before the tiled pass existed.
+
+    Trays where the tiled pass now wins are removed from the shards, so the next `run` redoes
+    them. Returns their image ids.
+    """
+    config.ensure_dirs()
+    shard_dir = config.OUT / "shards" / source
+    man = pd.read_parquet(config.TABLES / "image_manifest.parquet").set_index("image_id")
+    done = sorted(_done_ids(shard_dir))
+    gd = Pipeline.__new__(Pipeline)
+    gd.gd = models.GroundingDino()
+    redo, t0 = [], time.time()
+    for i, image_id in enumerate(done, 1):
+        row = man.loc[image_id]
+        if row["image_kind"] != "tray_ethanol":
+            continue
+        _, _, how = gd.boxes_tray(_open(row["local_path"]))
+        if how == "grounding_dino_tiled":
+            redo.append(image_id)
+        if i % 50 == 0:
+            print(f"  rechecked {i}/{len(done)}: {len(redo)} to redo, {(time.time() - t0) / i:.1f} s/img", flush=True)
+    for f in sorted(shard_dir.glob("*.parquet")):
+        df = pd.read_parquet(f)
+        keep = df[~df["image_id"].isin(redo)]
+        if len(keep) != len(df):
+            keep.to_parquet(f, index=False) if len(keep) else f.unlink()
+    print(f"{source}: {len(redo)} trays to redo with tiled detection", flush=True)
+    return redo
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("source", choices=["hf2018", "hawaii", "biorepo", "sentinel"])
     ap.add_argument("--limit", type=int)
     ap.add_argument("--no-parts", action="store_true")
     ap.add_argument("--sam", default=models.SAM2_ID, help="SAM 2.1 checkpoint (default: %(default)s)")
+    ap.add_argument("--recheck-trays", action="store_true",
+                    help="first re-run tray detection with the tiled pass and redo trays where it wins")
     args = ap.parse_args()
+    if args.recheck_trays:
+        recheck_trays(args.source)
     run(args.source, args.limit, parts=not args.no_parts, sam_id=args.sam)
 
 

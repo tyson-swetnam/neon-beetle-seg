@@ -144,8 +144,17 @@ class GroundingDino:
         if tile is None:
             return self._detect_one(image, text, box_thr, text_thr)
         parts = []
-        for x1, y1, x2, y2 in tile_grid(*image.size, tile, overlap):
+        w, h = image.size
+        for x1, y1, x2, y2 in tile_grid(w, h, tile, overlap):
             d = self._detect_one(image.crop((x1, y1, x2, y2)), text, box_thr, text_thr)
+            if not len(d):
+                continue
+            # a box touching an inner tile edge is a specimen cut by the tile; the overlapping
+            # neighbour sees it whole, so the cut copy is dropped rather than left for NMS
+            b, m = d.boxes, 3
+            cut = (((b[:, 0] <= m) & (x1 > 0)) | ((b[:, 1] <= m) & (y1 > 0))
+                   | ((b[:, 2] >= (x2 - x1) - m) & (x2 < w)) | ((b[:, 3] >= (y2 - y1) - m) & (y2 < h)))
+            d = d.select(~cut)
             if len(d):
                 d.boxes[:, [0, 2]] += x1
                 d.boxes[:, [1, 3]] += y1

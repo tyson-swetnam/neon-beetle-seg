@@ -46,6 +46,8 @@ def point_to_instance(inst: pd.DataFrame, points: pd.DataFrame) -> pd.Series:
         masks = [(r.instance_id, r.win_x1, r.win_y1, measure.rle_decode(r.mask_rle, r.mask_h, r.mask_w),
                   (r.box_x1, r.box_y1, r.box_x2, r.box_y2)) for r in g.itertuples()]
         for idx, x, y in zip(pts.index, pts["x"], pts["y"]):
+            if not (np.isfinite(x) and np.isfinite(y)):
+                continue  # an annotation row with no usable coordinates
             hit, box_hit, box_area = None, None, np.inf
             for iid, wx, wy, m, (bx1, by1, bx2, by2) in masks:
                 mx, my = int(round(x - wx)), int(round(y - wy))
