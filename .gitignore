@@ -1,0 +1,19 @@
+# data, model caches and outputs stay out of git (see docs/environment.md)
+data/
+outputs/
+cache/
+logs/
+*.duckdb
+*.ducklake
+*.wal
+
+# secrets never live in the repo
+*.env
+.env*
+
+# python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/

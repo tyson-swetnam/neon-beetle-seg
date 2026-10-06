@@ -1,0 +1,59 @@
+[project]
+name = "neon-beetle-seg"
+version = "0.2.0"
+description = "Segmentation and morphometrics of NEON ground-beetle (Carabidae) pitfall-trap specimens across all NEON sites"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Tyson Lee Swetnam" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "torch>=2.7",
+    "torchvision",
+    "transformers>=4.57",
+    "accelerate",
+    "timm",
+    "opencv-python-headless",
+    "scikit-image",
+    "scipy",
+    "pycocotools",
+    "pillow",
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "duckdb==1.5.5",
+    "huggingface_hub",
+    "pygbif",
+    "neonutilities",
+    "httpx",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+# ultralytics is AGPL-3.0; it is only needed for the Imageomics YOLOv8m beetle detector.
+yolo = ["ultralytics>=8.3"]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+nbs = "neon_beetle_seg.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neon_beetle_seg"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.ruff]
+line-length = 110
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

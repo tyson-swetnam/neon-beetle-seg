@@ -1,0 +1,34 @@
+table,column,curie,unit_curie,note
+measurements,length_px,PATO:0000122,,longest side of the minimum-area rectangle around the whole mask (pixels at working resolution)
+measurements,width_px,PATO:0000921,,short side of the minimum-area rectangle (pixels)
+measurements,core_length_px,CMO:0000013,,body length after morphological opening removes legs and antennae (pixels)
+measurements,core_width_px,PATO:0000921,,body width after opening (pixels)
+measurements,length_mm,PATO:0000122,UO:0000016,length in mm when a scale is known
+measurements,width_mm,PATO:0000921,UO:0000016,width in mm when a scale is known
+measurements,core_length_mm,CMO:0000013,UO:0000016,body length in mm when a scale is known
+measurements,core_width_mm,PATO:0000921,UO:0000016,body width in mm when a scale is known
+measurements,area_px,PATO:0001323,,mask area in pixels
+measurements,area_mm2,PATO:0001323,UO:0000082,mask area in mm^2 when a scale is known
+measurements,perimeter_px,PATO:0001711,,mask contour length in pixels
+measurements,orientation_deg,PATO:0000133,UO:0000185,fitted-ellipse angle
+measurements,solidity,PATO:0001355,,mask area / convex hull area (1 = fully convex)
+measurements,ellipse_major_px,PATO:0000122,,fitted-ellipse major axis
+measurements,ellipse_minor_px,PATO:0000921,,fitted-ellipse minor axis
+measurements,mean_r,PATO:0000014,,mean red channel inside mask
+measurements,mean_g,PATO:0000014,,mean green channel inside mask
+measurements,mean_b,PATO:0000014,,mean blue channel inside mask
+measurements,px_per_mm,UO:0000243,UO:0000243,image scale at working resolution
+measurements,crop_path,OBI:0003360,,RGBA crop cut from the instance mask
+measurements,image,IAO:0000185,,source photograph
+measurements,source,OBI:0003918,,segmentation route (yolo+sam or sam_box_single)
+measurements,sex,PATO:0000047,,sex from expert taxonomist table
+specimen_manifest,individualID,OBI:0100051,,NEON pinned specimen identifier
+specimen_manifest,biorepo_catalogNumber,OBI:0001900,,NEON Biorepository accession
+specimen_manifest,bestScientificName,NCBITaxon:41073,,all specimens are Carabidae; per-name NCBITaxon CURIEs in taxon_terms
+neon_fielddata,decimalLatitude,OBI:0001620,UO:0000185,plot centroid
+neon_fielddata,decimalLongitude,OBI:0001621,UO:0000185,plot centroid
+neon_fielddata,trapID,ENVO:01000976,,pitfall trap position on plot
+neon_fielddata,nlcdClass,ENVO:01000888,,mapped per value in landcover_terms
+neon_fielddata,eventID,BCO:0000054,,bout-level trap collection event
+elytra_annotations_2018,dist_cm,COLAO:0000000,UO:0000016,Zooniverse elytra length/width annotations (2018 group images)
+neon_fielddata,elevation,PATO:0001687,,plot elevation in metres above sea level
