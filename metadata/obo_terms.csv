@@ -32,3 +32,12 @@ ENVO:01000843,envo,area of evergreen forest,http://purl.obolibrary.org/obo/ENVO_
 ENVO:01000892,envo,area of cropland,http://purl.obolibrary.org/obo/ENVO_01000892,land cover
 BCO:0000054,bco,trap or sample taxonomic inventory process,http://purl.obolibrary.org/obo/BCO_0000054,process
 PATO:0001687,pato,elevation,http://purl.obolibrary.org/obo/PATO_0001687,quality
+ENVO:01000816,envo,area of deciduous forest,http://purl.obolibrary.org/obo/ENVO_01000816,land cover
+ENVO:01000855,envo,area of mixed forest,http://purl.obolibrary.org/obo/ENVO_01000855,land cover
+ENVO:01000891,envo,area of pastureland or hayfields,http://purl.obolibrary.org/obo/ENVO_01000891,land cover
+ENVO:01000893,envo,area of woody wetland,http://purl.obolibrary.org/obo/ENVO_01000893,land cover
+ENVO:01000894,envo,area of emergent herbaceous wetland,http://purl.obolibrary.org/obo/ENVO_01000894,land cover
+ENVO:01000861,envo,area of dwarf scrub,http://purl.obolibrary.org/obo/ENVO_01000861,land cover
+ENVO:01000887,envo,area of sedge- and forb-dominated herbaceous vegetation,http://purl.obolibrary.org/obo/ENVO_01000887,land cover
+AISM:0000059,aism,pronotum,http://purl.obolibrary.org/obo/AISM_0000059,anatomy
+UO:0000015,uo,centimeter,http://purl.obolibrary.org/obo/UO_0000015,unit

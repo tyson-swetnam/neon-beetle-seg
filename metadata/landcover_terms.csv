@@ -3,3 +3,10 @@ grasslandHerbaceous,ENVO:01000888,area of gramanoid or herbaceous vegetation
 shrubScrub,ENVO:01000869,area of scrub
 evergreenForest,ENVO:01000843,area of evergreen forest
 cultivatedCrops,ENVO:01000892,area of cropland
+deciduousForest,ENVO:01000816,area of deciduous forest
+mixedForest,ENVO:01000855,area of mixed forest
+pastureHay,ENVO:01000891,area of pastureland or hayfields
+woodyWetlands,ENVO:01000893,area of woody wetland
+emergentHerbaceousWetlands,ENVO:01000894,area of emergent herbaceous wetland
+dwarfScrub,ENVO:01000861,area of dwarf scrub
+sedgeHerbaceous,ENVO:01000887,area of sedge- and forb-dominated herbaceous vegetation
