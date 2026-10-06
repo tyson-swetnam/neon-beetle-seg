@@ -1,0 +1,241 @@
+"""Detect, segment and measure every specimen in every image of the manifest.
+
+Routes (image_manifest.route):
+  tray    many specimens per photo: Grounding DINO on the whole photo -> one box per beetle ->
+          SAM 2.1 mask per box -> BeetleFlow part labels per specimen crop
+  single  one specimen in a larger photo (labels, rulers, grids around it): Grounding DINO ->
+          best beetle box -> SAM 2.1 -> BeetleFlow
+  crop    image is already a tight crop of one specimen (sentinel-beetles): BeetleFlow on the
+          whole crop -> box around its foreground -> SAM 2.1
+
+Output is sharded parquet under outputs/shards/<source>/ so a run can be stopped and resumed:
+  instances-*.parquet  one row per specimen (boxes, mask RLE, pixel metrics)
+  images-*.parquet     one row per image (status, counts, seconds)
+Masks are stored as COCO RLE relative to a window (win_x1, win_y1, mask_w, mask_h) of the image.
+"""
+from __future__ import annotations
+
+import argparse
+import time
+import traceback
+
+import cv2
+import numpy as np
+import pandas as pd
+import torch
+from PIL import Image
+
+from . import config, measure, models
+
+Image.MAX_IMAGE_PIXELS = None
+
+PROMPT = "a beetle."
+BOX_THR, TEXT_THR = 0.25, 0.2
+PARTS_PAD = 0.06  # BeetleFlow was trained on detector-box crops, so keep its crop tight
+MAX_BOX_FRAC_TRAY = 0.20  # a "beetle" box covering more of a tray than this is the tray itself
+
+
+def _open(path) -> Image.Image:
+    return Image.open(config.ROOT / path).convert("RGB")
+
+
+def _blob_box(image: Image.Image) -> np.ndarray | None:
+    """Fallback prompt for a single specimen: the largest blob that differs from the backdrop.
+
+    The backdrop colour is taken from the image border; this is the pilot's "dark-blob"
+    idea generalised to coloured backdrops.
+    """
+    small = image.copy()
+    small.thumbnail((512, 512))
+    a = np.asarray(small).astype(np.int16)
+    border = np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]])
+    dist = np.abs(a - np.median(border, axis=0)).sum(axis=2).astype(np.float32)
+    thr = max(40.0, float(np.percentile(dist, 75)))
+    m = cv2.morphologyEx((dist > thr).astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n, _, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
+    if n <= 1:
+        return None
+    k = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    x, y, w, h, area = stats[k]
+    if area < 0.002 * m.size:
+        return None
+    s = image.size[0] / small.size[0]
+    return np.array([x * s, y * s, (x + w) * s, (y + h) * s], np.float32)
+
+
+def _parts_window(box, width: int, height: int) -> tuple[int, int, int, int]:
+    return models.Sam2.crop_window(box, width, height, pad=PARTS_PAD, min_side=32)
+
+
+class Pipeline:
+    def __init__(self, routes: set[str], parts: bool = True, sam_id: str = models.SAM2_ID):
+        self.gd = models.GroundingDino() if routes & {"tray", "single"} else None
+        self.sam = models.Sam2(sam_id)
+        self.bf = models.BeetleFlow() if parts else None
+        self.model_ids = dict(detector=models.GDINO_ID if self.gd else None, segmenter=sam_id,
+                              parts_model=self.bf.model_id if self.bf else None)
+
+    # ---- per-route detection -------------------------------------------------------------
+    def boxes_tray(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray, str]:
+        det = self.gd.detect(image, PROMPT, BOX_THR, TEXT_THR)
+        if len(det):
+            w, h = image.size
+            area = (det.boxes[:, 2] - det.boxes[:, 0]) * (det.boxes[:, 3] - det.boxes[:, 1])
+            det = models.nms(det.select(area < MAX_BOX_FRAC_TRAY * w * h), 0.5, 0.8)
+        return det.boxes, det.scores, "grounding_dino"
+
+    def boxes_single(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray, str]:
+        det = self.gd.detect(image, PROMPT, BOX_THR, TEXT_THR)
+        w, h = image.size
+        if len(det):
+            area = (det.boxes[:, 2] - det.boxes[:, 0]) * (det.boxes[:, 3] - det.boxes[:, 1])
+            det = det.select(area >= 0.005 * w * h)
+        if len(det):
+            # one specimen per photo: the most confident box, larger boxes winning near-ties
+            area = (det.boxes[:, 2] - det.boxes[:, 0]) * (det.boxes[:, 3] - det.boxes[:, 1])
+            best = int(np.argmax(det.scores + 0.1 * area / (w * h)))
+            return det.boxes[[best]], det.scores[[best]], "grounding_dino"
+        blob = _blob_box(image)
+        if blob is not None:
+            return blob[None], np.array([np.nan], np.float32), "backdrop_blob"
+        return np.array([[1, 1, w - 1, h - 1]], np.float32), np.array([np.nan], np.float32), "full_frame"
+
+    # ---- shared tail: SAM mask + parts + metrics ---------------------------------------------
+    def finish(self, image: Image.Image, boxes: np.ndarray, scores: np.ndarray, det_source: str,
+               part_maps: list[np.ndarray] | None = None, part_windows: list | None = None) -> list[dict]:
+        if len(boxes) == 0:
+            return []
+        w, h = image.size
+        sam_out = self.sam.segment_boxes(image, boxes)
+        if self.bf is not None and part_maps is None:
+            part_windows = [_parts_window(b, w, h) for b in boxes]
+            part_maps = []
+            for i in range(0, len(boxes), 8):
+                part_maps += self.bf.predict([image.crop(win) for win in part_windows[i:i + 8]])
+        rows = []
+        for k, (box, score, (win, mask, sam_score)) in enumerate(zip(boxes, scores, sam_out)):
+            rgb = np.asarray(image.crop(win))
+            row = dict(box_x1=float(box[0]), box_y1=float(box[1]), box_x2=float(box[2]), box_y2=float(box[3]),
+                       det_score=None if np.isnan(score) else float(score), det_source=det_source,
+                       sam_score=sam_score, win_x1=win[0], win_y1=win[1], mask_w=mask.shape[1],
+                       mask_h=mask.shape[0], mask_rle=measure.rle_encode(mask))
+            row.update(measure.body_metrics(mask, rgb))
+            # a mask running along the frame edge usually means a cut-off specimen or a bad prompt
+            ys, xs = np.nonzero(mask)
+            row["touches_edge"] = bool(len(xs) and (xs.min() + win[0] <= 1 or ys.min() + win[1] <= 1
+                                                   or xs.max() + win[0] >= w - 2 or ys.max() + win[1] >= h - 2))
+            if part_maps is not None:
+                pwin, labels = part_windows[k], part_maps[k]
+                # restrict part labels to this specimen's SAM mask (matters on crowded trays)
+                body = np.zeros(labels.shape, bool)
+                ox, oy = win[0] - pwin[0], win[1] - pwin[1]
+                y1, x1 = max(oy, 0), max(ox, 0)
+                y2, x2 = min(oy + mask.shape[0], labels.shape[0]), min(ox + mask.shape[1], labels.shape[1])
+                if y2 > y1 and x2 > x1:
+                    body[y1:y2, x1:x2] = mask[y1 - oy:y2 - oy, x1 - ox:x2 - ox]
+                row.update(measure.part_metrics(labels, body))
+                row.update(pwin_x1=pwin[0], pwin_y1=pwin[1], parts_w=labels.shape[1], parts_h=labels.shape[0])
+                for name in ("head", "pronotum", "elytra"):
+                    row[f"{name}_rle"] = measure.rle_encode((labels == models.PART_CLASSES.index(name)) & body)
+            rows.append(row)
+        return rows
+
+    def run_crop(self, image: Image.Image) -> list[dict]:
+        """Tight single-specimen crop: part labels first, then SAM prompted by their extent."""
+        w, h = image.size
+        labels = self.bf.predict([image])[0]
+        fg = measure.largest_component(labels > 0, fill_holes=False) if (labels > 0).any() else None
+        trunk = [(labels == models.PART_CLASSES.index(n)).sum() for n in ("head", "pronotum", "elytra")]
+        # only trust the part labels as a prompt when they found a whole beetle; when the head or
+        # pronotum is missed, a box around the rest would make SAM segment the elytra alone
+        if fg is not None and fg.sum() >= 0.01 * w * h and min(trunk) >= 0.002 * w * h:
+            ys, xs = np.nonzero(fg)
+            box = np.array([xs.min(), ys.min(), xs.max() + 1, ys.max() + 1], np.float32)
+            source = "beetleflow_extent"
+        else:
+            box, source = np.array([1, 1, w - 1, h - 1], np.float32), "full_frame"
+        return self.finish(image, box[None], np.array([np.nan], np.float32), source,
+                           part_maps=[labels], part_windows=[(0, 0, w, h)])
+
+    def run_image(self, row) -> list[dict]:
+        image = _open(row.local_path)
+        if row.route == "crop":
+            return self.run_crop(image)
+        boxes, scores, source = self.boxes_tray(image) if row.route == "tray" else self.boxes_single(image)
+        return self.finish(image, boxes, scores, source)
+
+
+def _done_ids(shard_dir) -> set[str]:
+    ids: set[str] = set()
+    for f in shard_dir.glob("images-*.parquet"):
+        ids |= set(pd.read_parquet(f, columns=["image_id"])["image_id"])
+    return ids
+
+
+def run(source: str, limit: int | None = None, flush_every: int = 200, parts: bool = True,
+        sam_id: str = models.SAM2_ID) -> None:
+    config.ensure_dirs()
+    config.limit_threads()
+    torch.set_num_threads(config.N_THREADS)
+    man = pd.read_parquet(config.TABLES / "image_manifest.parquet")
+    man = man[(man["source"] == source) & man["duplicate_of"].isna() & man["is_carabid"]]
+    shard_dir = config.OUT / "shards" / source
+    shard_dir.mkdir(parents=True, exist_ok=True)
+    todo = man[~man["image_id"].isin(_done_ids(shard_dir))]
+    if limit:
+        todo = todo.head(limit)
+    print(f"{source}: {len(man):,} images, {len(todo):,} to do", flush=True)
+    if todo.empty:
+        return
+    pipe = Pipeline(set(todo["route"]), parts=parts, sam_id=sam_id)
+    inst_rows, img_rows, t0, n = [], [], time.time(), 0
+
+    def flush():
+        nonlocal inst_rows, img_rows
+        if not img_rows:
+            return
+        tag = f"{int(time.time() * 1000)}"
+        pd.DataFrame(img_rows).to_parquet(shard_dir / f"images-{tag}.parquet", index=False)
+        if inst_rows:
+            pd.DataFrame(inst_rows).to_parquet(shard_dir / f"instances-{tag}.parquet", index=False)
+        inst_rows, img_rows = [], []
+
+    rows = list(todo.itertuples())
+    for row in rows:
+        t = time.time()
+        status, found = "ok", []
+        try:
+            found = pipe.run_image(row)
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            status = "error:cuda_oom"
+        except Exception as e:  # noqa: BLE001 - one bad image must not stop a multi-hour run
+            status = f"error:{type(e).__name__}"
+            if n < 5:
+                traceback.print_exc()
+        for k, r in enumerate(found, 1):
+            inst_rows.append(dict(instance_id=f"{row.image_id}#{k:03d}", image_id=row.image_id, instance=k,
+                                  **r, **pipe.model_ids))
+        img_rows.append(dict(image_id=row.image_id, status=status, n_instances=len(found),
+                             seconds=round(time.time() - t, 3)))
+        n += 1
+        if n % flush_every == 0:
+            flush()
+            rate = n / (time.time() - t0)
+            print(f"  {n:,}/{len(rows):,}  {rate:.2f} img/s  eta {(len(rows) - n) / rate / 60:.0f} min", flush=True)
+    flush()
+    print(f"{source}: done {n:,} images in {(time.time() - t0) / 60:.1f} min", flush=True)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("source", choices=["hf2018", "hawaii", "biorepo", "sentinel"])
+    ap.add_argument("--limit", type=int)
+    ap.add_argument("--no-parts", action="store_true")
+    ap.add_argument("--sam", default=models.SAM2_ID, help="SAM 2.1 checkpoint (default: %(default)s)")
+    args = ap.parse_args()
+    run(args.source, args.limit, parts=not args.no_parts, sam_id=args.sam)
+
+
+if __name__ == "__main__":
+    main()
