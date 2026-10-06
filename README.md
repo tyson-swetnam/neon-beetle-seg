@@ -8,9 +8,11 @@ The pipeline pulls records and images from NEON, the NEON Biorepository, GBIF an
 runs open segmentation models on a single 16 GB GPU, and publishes the result as a
 [DuckLake](https://ducklake.select/) lakehouse on the CyVerse Data Store.
 
-**Status: v0.2.0** (October 2026). Built locally and documented; the upload to the CyVerse Data
-Store is pending (the store was under maintenance when this was written). The graphical report is
-in [docs/report.html](docs/report.html).
+**Status: v0.2.0** (October 2026). Published to the CyVerse Data Store at
+`/iplant/home/tswetnam/neon-beetle-seg/` on 2026-10-06 and verified against the local build (all
+93 lake files identical by sha256). The graphical report is `report/report.html` there and
+[docs/report.html](docs/report.html) here. The v0.1.0 pilot is kept unchanged under
+`archive/v0.1.0-pilot/`.
 
 ## Results
 
