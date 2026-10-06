@@ -811,6 +811,13 @@
   "label": null,
   "query": "Anepsius valens"
  },
+ "Anillina": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Anillina"
+ },
  "Anillinus": {
   "curie": "NCBITaxon:432668",
   "exact": true,
@@ -866,6 +873,13 @@
   "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1205965",
   "label": "Anisodactylus carbonarius",
   "query": "Anisodactylus carbonarius"
+ },
+ "Anisodactylus consobrinus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Anisodactylus consobrinus"
  },
  "Anisodactylus dulcicollis": {
   "curie": null,
@@ -4920,12 +4934,264 @@
   "label": "Pterostichus algidus",
   "query": "Pterostichus algidus"
  },
+ "Pterostichus amethystinus": {
+  "curie": "NCBITaxon:484300",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484300",
+  "label": "Pterostichus amethystinus",
+  "query": "Pterostichus amethystinus"
+ },
+ "Pterostichus atratus": {
+  "curie": "NCBITaxon:484286",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484286",
+  "label": "Pterostichus atratus",
+  "query": "Pterostichus atratus"
+ },
+ "Pterostichus brevicornis": {
+  "curie": "NCBITaxon:1483938",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1483938",
+  "label": "Pterostichus brevicornis",
+  "query": "Pterostichus brevicornis"
+ },
+ "Pterostichus brevicornis brevicornis": {
+  "curie": "NCBITaxon:1483938",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1483938",
+  "label": "Pterostichus brevicornis",
+  "query": "Pterostichus brevicornis"
+ },
+ "Pterostichus bryanti tiliaceoradix": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus bryanti"
+ },
+ "Pterostichus caribou": {
+  "curie": "NCBITaxon:1483943",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1483943",
+  "label": "Pterostichus caribou",
+  "query": "Pterostichus caribou"
+ },
+ "Pterostichus castaneus": {
+  "curie": "NCBITaxon:484304",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484304",
+  "label": "Pterostichus castaneus",
+  "query": "Pterostichus castaneus"
+ },
+ "Pterostichus caudicalis": {
+  "curie": "NCBITaxon:484331",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484331",
+  "label": "Pterostichus caudicalis",
+  "query": "Pterostichus caudicalis"
+ },
+ "Pterostichus commutabilis": {
+  "curie": "NCBITaxon:2109496",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2109496",
+  "label": "Pterostichus commutabilis",
+  "query": "Pterostichus commutabilis"
+ },
+ "Pterostichus coracinus": {
+  "curie": "NCBITaxon:1206050",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206050",
+  "label": "Pterostichus coracinus",
+  "query": "Pterostichus coracinus"
+ },
+ "Pterostichus coracinus/novus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus coracinus/novus"
+ },
+ "Pterostichus corrusculus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus corrusculus"
+ },
+ "Pterostichus corvinus": {
+  "curie": "NCBITaxon:484357",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484357",
+  "label": "Pterostichus corvinus",
+  "query": "Pterostichus corvinus"
+ },
+ "Pterostichus crenicollis": {
+  "curie": "NCBITaxon:484306",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484306",
+  "label": "Pterostichus crenicollis",
+  "query": "Pterostichus crenicollis"
+ },
+ "Pterostichus ecarinatus": {
+  "curie": "NCBITaxon:484308",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484308",
+  "label": "Pterostichus ecarinatus",
+  "query": "Pterostichus ecarinatus"
+ },
  "Pterostichus femoralis": {
   "curie": null,
   "exact": false,
   "iri": null,
   "label": null,
   "query": "Pterostichus femoralis"
+ },
+ "Pterostichus herculaneus": {
+  "curie": "NCBITaxon:1206289",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206289",
+  "label": "Pterostichus herculaneus",
+  "query": "Pterostichus herculaneus"
+ },
+ "Pterostichus inanis": {
+  "curie": "NCBITaxon:484344",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484344",
+  "label": "Pterostichus inanis",
+  "query": "Pterostichus inanis"
+ },
+ "Pterostichus lachrymosus": {
+  "curie": "NCBITaxon:1206033",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206033",
+  "label": "Pterostichus lachrymosus",
+  "query": "Pterostichus lachrymosus"
+ },
+ "Pterostichus lama": {
+  "curie": "NCBITaxon:484313",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484313",
+  "label": "Pterostichus lama",
+  "query": "Pterostichus lama"
+ },
+ "Pterostichus luctuosus": {
+  "curie": "NCBITaxon:484365",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484365",
+  "label": "Pterostichus luctuosus",
+  "query": "Pterostichus luctuosus"
+ },
+ "Pterostichus mandibularoides": {
+  "curie": "NCBITaxon:2843184",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2843184",
+  "label": "Pterostichus mandibularoides",
+  "query": "Pterostichus mandibularoides"
+ },
+ "Pterostichus melanarius": {
+  "curie": "NCBITaxon:60768",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_60768",
+  "label": "Pterostichus melanarius",
+  "query": "Pterostichus melanarius"
+ },
+ "Pterostichus melanarius melanarius": {
+  "curie": "NCBITaxon:60768",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_60768",
+  "label": "Pterostichus melanarius",
+  "query": "Pterostichus melanarius"
+ },
+ "Pterostichus moestus": {
+  "curie": "NCBITaxon:484293",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484293",
+  "label": "Pterostichus moestus",
+  "query": "Pterostichus moestus"
+ },
+ "Pterostichus mutus": {
+  "curie": "NCBITaxon:221093",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_221093",
+  "label": "Pterostichus mutus",
+  "query": "Pterostichus mutus"
+ },
+ "Pterostichus neobrunneus": {
+  "curie": "NCBITaxon:484318",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484318",
+  "label": "Pterostichus neobrunneus",
+  "query": "Pterostichus neobrunneus"
+ },
+ "Pterostichus nivalis": {
+  "curie": "NCBITaxon:1944120",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1944120",
+  "label": "Pterostichus nivalis",
+  "query": "Pterostichus nivalis"
+ },
+ "Pterostichus novus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus novus"
+ },
+ "Pterostichus ophryoderus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus ophryoderus"
+ },
+ "Pterostichus ordinarius": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus ordinarius"
+ },
+ "Pterostichus oregonus": {
+  "curie": "NCBITaxon:3241334",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_3241334",
+  "label": "Pterostichus oregonus",
+  "query": "Pterostichus oregonus"
+ },
+ "Pterostichus panticulatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus panticulatus"
+ },
+ "Pterostichus patruelis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus patruelis"
+ },
+ "Pterostichus pensylvanicus": {
+  "curie": "NCBITaxon:1206052",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206052",
+  "label": "Pterostichus pensylvanicus",
+  "query": "Pterostichus pensylvanicus"
+ },
+ "Pterostichus permundus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus permundus"
+ },
+ "Pterostichus pinguedineus": {
+  "curie": "NCBITaxon:1483944",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1483944",
+  "label": "Pterostichus pinguedineus",
+  "query": "Pterostichus pinguedineus"
  },
  "Pterostichus protractus": {
   "curie": "NCBITaxon:484326",
@@ -4934,12 +5200,145 @@
   "label": "Pterostichus protractus",
   "query": "Pterostichus protractus"
  },
+ "Pterostichus pumilus": {
+  "curie": "NCBITaxon:484351",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484351",
+  "label": "Pterostichus pumilus",
+  "query": "Pterostichus pumilus"
+ },
+ "Pterostichus pumilus pumilus": {
+  "curie": "NCBITaxon:484351",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484351",
+  "label": "Pterostichus pumilus",
+  "query": "Pterostichus pumilus"
+ },
  "Pterostichus restrictus": {
   "curie": null,
   "exact": false,
   "iri": null,
   "label": null,
   "query": "Pterostichus restrictus"
+ },
+ "Pterostichus rostratus": {
+  "curie": "NCBITaxon:484292",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484292",
+  "label": "Pterostichus rostratus",
+  "query": "Pterostichus rostratus"
+ },
+ "Pterostichus sayanus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus sayanus"
+ },
+ "Pterostichus sculptus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus sculptus"
+ },
+ "Pterostichus serripes": {
+  "curie": "NCBITaxon:484327",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484327",
+  "label": "Pterostichus serripes",
+  "query": "Pterostichus serripes"
+ },
+ "Pterostichus similis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus similis"
+ },
+ "Pterostichus stygicus": {
+  "curie": "NCBITaxon:484294",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484294",
+  "label": "Pterostichus stygicus",
+  "query": "Pterostichus stygicus"
+ },
+ "Pterostichus sublaevis": {
+  "curie": "NCBITaxon:1944121",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1944121",
+  "label": "Pterostichus sublaevis",
+  "query": "Pterostichus sublaevis"
+ },
+ "Pterostichus surgens": {
+  "curie": "NCBITaxon:1206053",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206053",
+  "label": "Pterostichus surgens",
+  "query": "Pterostichus surgens"
+ },
+ "Pterostichus tareumiut": {
+  "curie": "NCBITaxon:2722014",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2722014",
+  "label": "Pterostichus tareumiut",
+  "query": "Pterostichus tareumiut"
+ },
+ "Pterostichus tenuis": {
+  "curie": "NCBITaxon:1710824",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1710824",
+  "label": "Pterostichus tenuis",
+  "query": "Pterostichus tenuis"
+ },
+ "Pterostichus tiliaceoradix": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus tiliaceoradix"
+ },
+ "Pterostichus trinarius": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus trinarius"
+ },
+ "Pterostichus tristis": {
+  "curie": "NCBITaxon:484329",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_484329",
+  "label": "Pterostichus tristis",
+  "query": "Pterostichus tristis"
+ },
+ "Pterostichus ventralis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Pterostichus ventralis"
+ },
+ "Pterostichus ventricosus": {
+  "curie": "NCBITaxon:1944122",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1944122",
+  "label": "Pterostichus ventricosus",
+  "query": "Pterostichus ventricosus"
+ },
+ "Pterostichus ventricosus ventricosus": {
+  "curie": "NCBITaxon:1944122",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1944122",
+  "label": "Pterostichus ventricosus",
+  "query": "Pterostichus ventricosus"
+ },
+ "Rhadine": {
+  "curie": "NCBITaxon:1690612",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1690612",
+  "label": "Rhadine",
+  "query": "Rhadine"
  },
  "Rhadine LeConte, 1846": {
   "curie": null,
@@ -4948,12 +5347,208 @@
   "label": null,
   "query": "Rhadine LeConte"
  },
+ "Rhadine caudata": {
+  "curie": "NCBITaxon:1690618",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1690618",
+  "label": "Rhadine caudata",
+  "query": "Rhadine caudata"
+ },
+ "Rhadine larvalis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Rhadine larvalis"
+ },
+ "Rhadine lindrothi": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Rhadine lindrothi"
+ },
  "Rhadine sp.": {
   "curie": "NCBITaxon:1691341",
   "exact": false,
   "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1691341",
   "label": "Rhadine sp. n. WMoore DNA3062",
   "query": "Rhadine sp."
+ },
+ "Sapotes": {
+  "curie": "NCBITaxon:2613249",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2613249",
+  "label": "Sapotes",
+  "query": "Sapotes"
+ },
+ "Scaphinotus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus"
+ },
+ "Scaphinotus (Nomaretus)": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus (Nomaretus)"
+ },
+ "Scaphinotus andrewsii": {
+  "curie": "NCBITaxon:230253",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_230253",
+  "label": "Scaphinotus andrewsii",
+  "query": "Scaphinotus andrewsii"
+ },
+ "Scaphinotus andrewsii darlingtoni": {
+  "curie": "NCBITaxon:230253",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_230253",
+  "label": "Scaphinotus andrewsii",
+  "query": "Scaphinotus andrewsii"
+ },
+ "Scaphinotus angulatus": {
+  "curie": "NCBITaxon:2109497",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2109497",
+  "label": "Scaphinotus angulatus",
+  "query": "Scaphinotus angulatus"
+ },
+ "Scaphinotus angusticollis": {
+  "curie": "NCBITaxon:230261",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_230261",
+  "label": "Scaphinotus angusticollis",
+  "query": "Scaphinotus angusticollis"
+ },
+ "Scaphinotus cavicollis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus cavicollis"
+ },
+ "Scaphinotus elevatus flammeus": {
+  "curie": "NCBITaxon:1206290",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206290",
+  "label": "Scaphinotus elevatus",
+  "query": "Scaphinotus elevatus"
+ },
+ "Scaphinotus guyotii": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus guyotii"
+ },
+ "Scaphinotus hoffmani": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus hoffmani"
+ },
+ "Scaphinotus hubbardi": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus hubbardi"
+ },
+ "Scaphinotus imperfectus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus imperfectus"
+ },
+ "Scaphinotus lodingi": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus lodingi"
+ },
+ "Scaphinotus marginatus": {
+  "curie": "NCBITaxon:230254",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_230254",
+  "label": "Scaphinotus marginatus",
+  "query": "Scaphinotus marginatus"
+ },
+ "Scaphinotus oreophilus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus oreophilus"
+ },
+ "Scaphinotus ridingsii": {
+  "curie": "NCBITaxon:1206031",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206031",
+  "label": "Scaphinotus ridingsii",
+  "query": "Scaphinotus ridingsii"
+ },
+ "Scaphinotus unicolor": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scaphinotus unicolor"
+ },
+ "Scaphinotus viduus": {
+  "curie": "NCBITaxon:230249",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_230249",
+  "label": "Scaphinotus viduus",
+  "query": "Scaphinotus viduus"
+ },
+ "Scarites ocalensis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Scarites ocalensis"
+ },
+ "Scarites quadriceps": {
+  "curie": "NCBITaxon:331967",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_331967",
+  "label": "Scarites quadriceps",
+  "query": "Scarites quadriceps"
+ },
+ "Scarites subterraneus": {
+  "curie": "NCBITaxon:60809",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_60809",
+  "label": "Scarites subterraneus",
+  "query": "Scarites subterraneus"
+ },
+ "Scarites vicinus": {
+  "curie": "NCBITaxon:1847794",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1847794",
+  "label": "Scarites vicinus",
+  "query": "Scarites vicinus"
+ },
+ "Selenophorus": {
+  "curie": "NCBITaxon:247448",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_247448",
+  "label": "Selenophorus",
+  "query": "Selenophorus"
+ },
+ "Selenophorus (Celiamorphus)": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus (Celiamorphus)"
  },
  "Selenophorus Dejean, 1829": {
   "curie": null,
@@ -4969,12 +5564,124 @@
   "label": null,
   "query": "Selenophorus aeneopiceus"
  },
+ "Selenophorus aequinoctialis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus aequinoctialis"
+ },
  "Selenophorus concinnus": {
   "curie": null,
   "exact": false,
   "iri": null,
   "label": null,
   "query": "Selenophorus concinnus"
+ },
+ "Selenophorus contractus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus contractus"
+ },
+ "Selenophorus discopunctatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus discopunctatus"
+ },
+ "Selenophorus ellipticus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus ellipticus"
+ },
+ "Selenophorus fabricii": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus fabricii"
+ },
+ "Selenophorus fatuus": {
+  "curie": "NCBITaxon:2681008",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2681008",
+  "label": "Selenophorus fatuus",
+  "query": "Selenophorus fatuus"
+ },
+ "Selenophorus fossulatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus fossulatus"
+ },
+ "Selenophorus granarius": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus granarius"
+ },
+ "Selenophorus hylacis": {
+  "curie": "NCBITaxon:2681009",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2681009",
+  "label": "Selenophorus hylacis",
+  "query": "Selenophorus hylacis"
+ },
+ "Selenophorus integer": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus integer"
+ },
+ "Selenophorus maritimus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus maritimus"
+ },
+ "Selenophorus nonellipticus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus nonellipticus"
+ },
+ "Selenophorus opalinus": {
+  "curie": "NCBITaxon:1710787",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1710787",
+  "label": "Selenophorus opalinus",
+  "query": "Selenophorus opalinus"
+ },
+ "Selenophorus palliatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus palliatus"
+ },
+ "Selenophorus parumpunctatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus parumpunctatus"
+ },
+ "Selenophorus pedicularius": {
+  "curie": "NCBITaxon:2578623",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2578623",
+  "label": "Selenophorus pedicularius",
+  "query": "Selenophorus pedicularius"
  },
  "Selenophorus planipennis": {
   "curie": "NCBITaxon:1206016",
@@ -4983,12 +5690,40 @@
   "label": "Selenophorus planipennis",
   "query": "Selenophorus planipennis"
  },
+ "Selenophorus propinquus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Selenophorus propinquus"
+ },
  "Selenophorus pumilus": {
   "curie": null,
   "exact": false,
   "iri": null,
   "label": null,
   "query": "Selenophorus pumilus"
+ },
+ "Semiardistomis puncticollis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Semiardistomis puncticollis"
+ },
+ "Semiardistomis viridis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Semiardistomis viridis"
+ },
+ "Semiclivina dentipes": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Semiclivina dentipes"
  },
  "Sericoda quadripunctata": {
   "curie": "NCBITaxon:1845101",
@@ -4997,12 +5732,278 @@
   "label": "Sericoda quadripunctata",
   "query": "Sericoda quadripunctata"
  },
+ "Sphaerobothris ulkei": {
+  "curie": "NCBITaxon:3711342",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_3711342",
+  "label": "Sphaerobothris ulkei",
+  "query": "Sphaerobothris ulkei"
+ },
+ "Sphaeroderus bicarinatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Sphaeroderus bicarinatus"
+ },
+ "Sphaeroderus canadensis": {
+  "curie": "NCBITaxon:1206017",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206017",
+  "label": "Sphaeroderus canadensis",
+  "query": "Sphaeroderus canadensis"
+ },
+ "Sphaeroderus canadensis canadensis": {
+  "curie": "NCBITaxon:1206017",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206017",
+  "label": "Sphaeroderus canadensis",
+  "query": "Sphaeroderus canadensis"
+ },
+ "Sphaeroderus canadensis lengi": {
+  "curie": "NCBITaxon:1206017",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206017",
+  "label": "Sphaeroderus canadensis",
+  "query": "Sphaeroderus canadensis"
+ },
+ "Sphaeroderus schaumii": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Sphaeroderus schaumii"
+ },
+ "Sphaeroderus stenostomus": {
+  "curie": "NCBITaxon:207752",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_207752",
+  "label": "Sphaeroderus stenostomus",
+  "query": "Sphaeroderus stenostomus"
+ },
+ "Sphaeroderus stenostomus lecontei": {
+  "curie": "NCBITaxon:207752",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_207752",
+  "label": "Sphaeroderus stenostomus",
+  "query": "Sphaeroderus stenostomus"
+ },
+ "Sphaeroderus stenostomus stenostomus": {
+  "curie": "NCBITaxon:207752",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_207752",
+  "label": "Sphaeroderus stenostomus",
+  "query": "Sphaeroderus stenostomus"
+ },
+ "Spilodiscus": {
+  "curie": "NCBITaxon:154227",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_154227",
+  "label": "Spilodiscus",
+  "query": "Spilodiscus"
+ },
+ "Staphylinidae": {
+  "curie": "NCBITaxon:29026",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_29026",
+  "label": "Staphylinidae",
+  "query": "Staphylinidae"
+ },
+ "Stenocrepis mexicana": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Stenocrepis mexicana"
+ },
+ "Stenolophus (Stenolophus)": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Stenolophus (Stenolophus)"
+ },
+ "Stenolophus carbo": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Stenolophus carbo"
+ },
  "Stenolophus comma": {
   "curie": "NCBITaxon:1206018",
   "exact": true,
   "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206018",
   "label": "Stenolophus comma",
   "query": "Stenolophus comma"
+ },
+ "Stenolophus dissimilis": {
+  "curie": "NCBITaxon:3003204",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_3003204",
+  "label": "Stenolophus dissimilis",
+  "query": "Stenolophus dissimilis"
+ },
+ "Stenolophus fuliginosus": {
+  "curie": "NCBITaxon:1206020",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206020",
+  "label": "Stenolophus fuliginosus",
+  "query": "Stenolophus fuliginosus"
+ },
+ "Stenolophus infuscatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Stenolophus infuscatus"
+ },
+ "Stenolophus ochropezus": {
+  "curie": "NCBITaxon:536894",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_536894",
+  "label": "Stenolophus ochropezus",
+  "query": "Stenolophus ochropezus"
+ },
+ "Stenolophus plebejus": {
+  "curie": "NCBITaxon:2681046",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2681046",
+  "label": "Stenolophus plebejus",
+  "query": "Stenolophus plebejus"
+ },
+ "Stenomorpha convexa": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Stenomorpha convexa"
+ },
+ "Stenomorphus californicus rufipes": {
+  "curie": "NCBITaxon:2681047",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2681047",
+  "label": "Stenomorphus californicus",
+  "query": "Stenomorphus californicus"
+ },
+ "Stereocerus haematopus": {
+  "curie": "NCBITaxon:1483935",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1483935",
+  "label": "Stereocerus haematopus",
+  "query": "Stereocerus haematopus"
+ },
+ "Stereocerus rubripes": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Stereocerus rubripes"
+ },
+ "Syntomus": {
+  "curie": "NCBITaxon:177555",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_177555",
+  "label": "Syntomus",
+  "query": "Syntomus"
+ },
+ "Syntomus americanus": {
+  "curie": "NCBITaxon:1206022",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206022",
+  "label": "Syntomus americanus",
+  "query": "Syntomus americanus"
+ },
+ "Synuchus impunctatus": {
+  "curie": "NCBITaxon:536895",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_536895",
+  "label": "Synuchus impunctatus",
+  "query": "Synuchus impunctatus"
+ },
+ "Tachys": {
+  "curie": "NCBITaxon:795055",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_795055",
+  "label": "Tachys",
+  "query": "Tachys"
+ },
+ "Tachys austinicus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tachys austinicus"
+ },
+ "Tachys columbiensis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tachys columbiensis"
+ },
+ "Tachys laevus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tachys laevus"
+ },
+ "Tachys oblitus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tachys oblitus"
+ },
+ "Tachys potomaca": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tachys potomaca"
+ },
+ "Tachys pumilus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tachys pumilus"
+ },
+ "Tachys ventricosus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tachys ventricosus"
+ },
+ "Tetracha carolina": {
+  "curie": "NCBITaxon:48631",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_48631",
+  "label": "Tetracha carolina",
+  "query": "Tetracha carolina"
+ },
+ "Tetracha carolina carolina": {
+  "curie": "NCBITaxon:48631",
+  "exact": false,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_48631",
+  "label": "Tetracha carolina",
+  "query": "Tetracha carolina"
+ },
+ "Tetracha floridana": {
+  "curie": "NCBITaxon:346509",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_346509",
+  "label": "Tetracha floridana",
+  "query": "Tetracha floridana"
+ },
+ "Tetracha virginica": {
+  "curie": "NCBITaxon:346521",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_346521",
+  "label": "Tetracha virginica",
+  "query": "Tetracha virginica"
  },
  "Tetragonoderus intersectus": {
   "curie": "NCBITaxon:2903186",
@@ -5011,6 +6012,13 @@
   "label": "Tetragonoderus intersectus",
   "query": "Tetragonoderus intersectus"
  },
+ "Tetragonoderus laevigatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tetragonoderus laevigatus"
+ },
  "Tetragonoderus pallidus": {
   "curie": null,
   "exact": false,
@@ -5018,11 +6026,137 @@
   "label": null,
   "query": "Tetragonoderus pallidus"
  },
+ "Tetragonoderus quadriguttatus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Tetragonoderus quadriguttatus"
+ },
  "Trachypachus inermis": {
   "curie": "NCBITaxon:1943978",
   "exact": true,
   "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1943978",
   "label": "Trachypachus inermis",
   "query": "Trachypachus inermis"
+ },
+ "Trechus": {
+  "curie": "NCBITaxon:60805",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_60805",
+  "label": "Trechus",
+  "query": "Trechus"
+ },
+ "Trechus apicalis": {
+  "curie": "NCBITaxon:1206023",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206023",
+  "label": "Trechus apicalis",
+  "query": "Trechus apicalis"
+ },
+ "Trechus crassiscapus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Trechus crassiscapus"
+ },
+ "Trechus obtusus": {
+  "curie": "NCBITaxon:346865",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_346865",
+  "label": "Trechus obtusus",
+  "query": "Trechus obtusus"
+ },
+ "Trechus quadristriatus": {
+  "curie": "NCBITaxon:372538",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_372538",
+  "label": "Trechus quadristriatus",
+  "query": "Trechus quadristriatus"
+ },
+ "Trichotichnus autumnalis": {
+  "curie": "NCBITaxon:2083717",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2083717",
+  "label": "Trichotichnus autumnalis",
+  "query": "Trichotichnus autumnalis"
+ },
+ "Trichotichnus dichrous": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Trichotichnus dichrous"
+ },
+ "Trichotichnus fulgens": {
+  "curie": "NCBITaxon:2681099",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2681099",
+  "label": "Trichotichnus fulgens",
+  "query": "Trichotichnus fulgens"
+ },
+ "Trichotichnus nitidulus": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Trichotichnus nitidulus"
+ },
+ "Trichotichnus vulpeculus": {
+  "curie": "NCBITaxon:1206029",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1206029",
+  "label": "Trichotichnus vulpeculus",
+  "query": "Trichotichnus vulpeculus"
+ },
+ "Trientoma puertoricensis": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Trientoma puertoricensis"
+ },
+ "Trogloderus verpus": {
+  "curie": "NCBITaxon:2682798",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2682798",
+  "label": "Trogloderus verpus",
+  "query": "Trogloderus verpus"
+ },
+ "Typhaea stercorea": {
+  "curie": "NCBITaxon:879065",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_879065",
+  "label": "Typhaea stercorea",
+  "query": "Typhaea stercorea"
+ },
+ "Xestonotus lugubris": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Xestonotus lugubris"
+ },
+ "Zacotus matthewsii": {
+  "curie": "NCBITaxon:2109491",
+  "exact": true,
+  "iri": "http://purl.obolibrary.org/obo/NCBITaxon_2109491",
+  "label": "Zacotus matthewsii",
+  "query": "Zacotus matthewsii"
+ },
+ "Zuphioides americanum": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Zuphioides americanum"
+ },
+ "Zuphioides longicolle": {
+  "curie": null,
+  "exact": false,
+  "iri": null,
+  "label": null,
+  "query": "Zuphioides longicolle"
  }
 }

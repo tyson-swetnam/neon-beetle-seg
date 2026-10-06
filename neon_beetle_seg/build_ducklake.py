@@ -65,6 +65,11 @@ DESCRIPTIONS = {
 }
 
 
+def _lit(text: str) -> str:
+    """SQL string literal (COMMENT ON does not accept bound parameters)."""
+    return "'" + str(text).replace("'", "''") + "'"
+
+
 def resolve_taxa(names: list[str]) -> pd.DataFrame:
     """NCBITaxon CURIE for each scientific name via EMBL-EBI OLS4, cached in metadata/."""
     cache_path = config.METADATA / "ncbitaxon_cache.json"
@@ -175,7 +180,7 @@ def build() -> pd.DataFrame:
             n = con.execute(f'SELECT count(*) FROM lake."{name}"').fetchone()[0]
             desc, src = DESCRIPTIONS.get(name, (None, "metadata" if name in meta else None))
             if desc:
-                con.execute(f'COMMENT ON TABLE lake."{name}" IS ?', [desc])
+                con.execute(f'COMMENT ON TABLE lake."{name}" IS {_lit(desc)}')
             catalog_rows.append(dict(table_name=name, rows=n, description=desc, source=src))
         cat = pd.DataFrame(catalog_rows)
         con.execute("CREATE OR REPLACE TABLE lake.table_catalog AS SELECT * FROM cat")
@@ -187,7 +192,7 @@ def build() -> pd.DataFrame:
         for r in meta["column_tags"].itertuples():
             if r.table in have and r.column in have[r.table]:
                 tag = r.curie + (f"; unit {r.unit_curie}" if isinstance(r.unit_curie, str) else "")
-                con.execute(f'COMMENT ON COLUMN lake."{r.table}"."{r.column}" IS ?', [f"{r.note} [{tag}]"])
+                con.execute(f'COMMENT ON COLUMN lake."{r.table}"."{r.column}" IS {_lit(f"{r.note} [{tag}]")}')
 
         if "measurements" in have and "taxon_terms" in have:
             view = ("SELECT m.*, t.curie AS ncbitaxon FROM {p}measurements m "
