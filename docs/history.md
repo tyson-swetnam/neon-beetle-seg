@@ -20,6 +20,7 @@ pilot's files are kept unchanged on the Data Store under `archive/v0.1.0-pilot/`
 | NEON tables | 8 sites, 2025, provisional | all sites, 2013 onward, release and provisional flagged |
 | Biorepository | 270 vouchers found through GBIF by state and year | every image in six collections, from the Darwin Core Archives |
 | Other images | 8 demonstration trays | 577 trays (2018), 417 Hawaii trays, 44,510 sentinel crops |
+| Bulk and bycatch | NEON tables only, 8 sites | all 11 Biorepository collections; every ethanol vial linked to its accession; 6,149 herptile photos segmented, with GBIF-assisted species suggestions |
 | Image manifest | one row per specimen; extra views dropped | one row per image |
 | Detector | YOLOv8m beetle detector (Ultralytics) | Grounding DINO |
 | Segmenter | MobileSAM | SAM 2.1 (large; base-plus for sentinel) |
@@ -51,6 +52,19 @@ pilot's files are kept unchanged on the Data Store under `archive/v0.1.0-pilot/`
   the base.
 - **`flattened_images.zip` in sentinel-beetles is incomplete.** At revision `11d861b5`, 24,856
   of its 44,510 entries are git-lfs pointer stubs. The parquet shards are complete.
+- **SAM returned the backdrop for half of the 2016 individual photos.** On a tight crop the prompt
+  box is the whole frame, and SAM segmented the plain backdrop instead of the beetle on 2,965 of
+  5,668 photos. A random contact sheet showed it; summary statistics had not, because a
+  backdrop mask is a perfectly well-formed mask. Such masks are now recognised by how much of
+  the frame's border they cover, and inverted.
+- **Whole-photo detection collapses on crowded trays.** One tray of 266 small beetles yielded a
+  single box. A tiled pass now takes over when it finds clearly more specimens.
+- **NEON publishes its sample IDs hashed.** `bet_sorting.subsampleID` and
+  `bet_archivepooling.archiveVialID` are hashes, not the readable IDs in older documentation. The
+  Biorepository publishes the same hash for each record, and that is what links the two.
+- **neonutilities 2.0.2 cannot download this product as shipped.** It makes an anonymous
+  connectivity check before every API call; a product with 2,988 site-months exhausts the
+  unauthenticated rate limit and the download aborts.
 - **GBIF's search API is too slow to page a large dataset.** Past an offset of about 30,000 a
   page takes more than two minutes. The anonymous fallback slices by year and state instead.
 - **`git push` hangs on this VM image** because the global credential helper is interactive.

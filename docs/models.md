@@ -5,10 +5,11 @@ through `transformers`, so nothing has to be compiled.
 
 | Role | Model | Licence | Gated | Used for |
 |---|---|---|---|---|
-| Detection | [`IDEA-Research/grounding-dino-base`](https://huggingface.co/IDEA-Research/grounding-dino-base), prompt `"a beetle."` | Apache-2.0 | no | one box per specimen in tray and single-specimen photos |
+| Detection | [`IDEA-Research/grounding-dino-base`](https://huggingface.co/IDEA-Research/grounding-dino-base), prompt `"a beetle."` (herps: `"a lizard. a frog. a salamander. a snake. a toad."`) | Apache-2.0 | no | one box per specimen in tray, single-specimen and herp photos |
 | Instance masks | [`facebook/sam2.1-hiera-large`](https://huggingface.co/facebook/sam2.1-hiera-large) | Apache-2.0 | no | one mask per box (Biorepository, 2018 trays, Hawaii) |
 | Instance masks | [`facebook/sam2.1-hiera-base-plus`](https://huggingface.co/facebook/sam2.1-hiera-base-plus) | Apache-2.0 | no | the 44,510 sentinel crops (about twice as fast) |
 | Part labels | [`imageomics/BeetleFlow`](https://huggingface.co/imageomics/BeetleFlow) `5-class` (Mask2Former, Swin-L) | MIT | no | head, pronotum, elytra, legs, antennae per specimen |
+| Herp species scoring | [`imageomics/bioclip-2`](https://huggingface.co/imageomics/bioclip-2) via `open_clip` | MIT | no | zero-shot scoring of herptile bycatch against GBIF candidate species |
 | Scale label OCR | [`microsoft/trocr-base-printed`](https://huggingface.co/microsoft/trocr-base-printed) | MIT | no | reading "5 mm" / "1 mm" beside printed scale bars |
 | Detection (optional) | [`imageomics/yolo_beetle_detection`](https://huggingface.co/imageomics/yolo_beetle_detection) (YOLOv8m) | weights MIT, Ultralytics AGPL-3.0 | no | comparison only; the pilot's detector |
 | Comparison (optional) | [`facebook/sam3`](https://huggingface.co/facebook/sam3) | SAM License | yes, manual approval | text-prompted segmentation, `nbs sam3` |

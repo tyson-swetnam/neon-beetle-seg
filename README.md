@@ -8,8 +8,9 @@ The pipeline pulls records and images from NEON, the NEON Biorepository, GBIF an
 runs open segmentation models on a single 16 GB GPU, and publishes the result as a
 [DuckLake](https://ducklake.select/) lakehouse on the CyVerse Data Store.
 
-**Status: v0.2.0** (October 2026). Beetle results are complete; herptile bycatch segmentation is
-in progress.
+**Status: v0.2.0** (October 2026). Built locally and documented; the upload to the CyVerse Data
+Store is pending (the store was under maintenance when this was written). The graphical report is
+in [docs/report.html](docs/report.html).
 
 ## Results
 
@@ -21,6 +22,7 @@ in progress.
 | Images processed | 53,257 beetle images from four pools, plus 6,149 herptile bycatch photos |
 | Beetles segmented | 65,830 specimens; 57,023 with a millimetre scale; 64,102 with elytra measured |
 | Linked to a NEON site | 20,698 beetle specimens at 46 sites (the 44,510 sentinel crops are anonymised and cannot be linked) |
+| Herptile bycatch | 9,021 outlines from 6,149 photos of 3,072 records at 41 sites, all with a millimetre scale; species suggestions for 64 of the 161 records not identified to species |
 
 How well it works, against human annotations ([docs/validation.md](docs/validation.md)):
 
@@ -31,6 +33,9 @@ How well it works, against human annotations ([docs/validation.md](docs/validati
 - **Elytra width:** median error 6.0% at the base (ethanol trays), 2.0% at the widest point
   (pinned, Hawaii).
 - **Scale readers:** within 0.6% of human scale bars where that could be checked.
+- **Herptile bycatch:** the number of outlines equals the recorded number of animals on 91.5% of
+  photos. Species suggestions are right 99.8% of the time when GBIF leaves one candidate, and
+  about three times in four when they rest on the image model.
 
 Things to know before using the numbers:
 

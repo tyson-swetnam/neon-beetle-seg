@@ -237,7 +237,7 @@ def build() -> pd.DataFrame:
         agree = out[f"{method}_pick_key"] == out["recorded_speciesKey"]
         out[f"{method}_agrees"] = agree.where(out["to_species"] & out[f"{method}_pick_key"].notna())
     # what is offered for records not identified to species
-    need = ~out["to_species"] & out["n_candidates"].fillna(0).gt(0)
+    need = ~out["to_species"].astype(bool) & out["n_candidates"].fillna(0).gt(0)
     single = need & (out["n_candidates"] == 1)
     strong = need & (out["n_candidates"] > 1) & (out["bioclip_prob"] >= MIN_PROB)
     out["suggested_species"] = np.where(single, out["range_pick"], np.where(strong, out["bioclip_pick"], None))
@@ -269,7 +269,7 @@ def main() -> None:
     val = pd.read_parquet(config.TABLES / "herp_id_validation.parquet")
     with pd.option_context("display.width", 200, "display.max_columns", 12):
         print(val.round(3).to_string(index=False))
-    need = out[~out["to_species"]]
+    need = out[~out["to_species"].astype(bool)]
     print(f"records not identified to species: {len(need)}; with a suggestion: {int(need['suggested_species'].notna().sum())}")
     print(need["suggestion_basis"].value_counts(dropna=False).to_string())
 

@@ -5,22 +5,23 @@ to `data/tables/`; `nbs lake` turns those into the DuckLake. Run them in this or
 
 | # | Command | Module | Needs | Writes |
 |---|---|---|---|---|
-| 1 | `nbs biorepo` | `fetch_biorepo.py` | network | `biorepo_records`, `biorepo_images` |
-| 2 | `nbs images` | `fetch_images.py` | network | image files, `biorepo_image_files` |
+| 1 | `nbs biorepo` | `fetch_biorepo.py` | network | `biorepo_collections`, `biorepo_records`, `biorepo_images`, `biorepo_identifications`, `biorepo_measurements`, `biorepo_material_samples` |
+| 2 | `nbs images` | `fetch_images.py` | network | beetle and herptile image files, `biorepo_image_files` |
 | 3 | `nbs hf` | `fetch_hf.py` | network, ~36 GB disk | the three Imageomics datasets |
 | 4 | `nbs gbif` | `fetch_gbif.py` | network (GBIF account optional) | `gbif_occurrences` |
-| 5 | `nbs neon` | `stack_neon.py` | `NEON_TOKEN` | `neon_*`, `specimen_manifest` |
+| 5 | `nbs neon` | `stack_neon.py` | `NEON_TOKEN` | `neon_*`, `specimen_manifest`, `preserved_samples` (`nbs neon --derive` rebuilds the last two without downloading) |
 | 6 | `nbs manifest` | `manifest.py` | steps 1 to 3 | `image_manifest`, annotation tables |
 | 7 | `nbs segment <pool>` | `segment.py` | GPU | `outputs/shards/<pool>/` |
 | 8 | `nbs scale` | `scale.py` | GPU (small) | `image_scale` |
 | 9 | `nbs tables` | `tables.py` | steps 7, 8 | `instances`, `measurements`, `image_results` |
 | 10 | `nbs validate` | `validate.py` | step 9 | `validation_*` |
-| 11 | `nbs sam3` | `sam3_compare.py` | GPU, `HF_TOKEN` with SAM 3 access | `sam3_comparison` (optional) |
+| 11 | `nbs herps` | `herp_id.py` | network, GPU (small) | `herp_taxa`, `herp_candidates`, `herp_id_suggestions`, `herp_id_validation` |
+| 11b | `nbs sam3` | `sam3_compare.py` | GPU, `HF_TOKEN` with SAM 3 access | `sam3_comparison` (optional) |
 | 12 | `nbs lake` | `build_ducklake.py` | everything above | `data/ducklake/` |
 | 13 | `nbs report` | `report.py` | step 12 | `outputs/report/report.html` |
 | 14 | `nbs upload` | `upload.py` | `gocmd` login | the Data Store collection |
 
-`scripts/run_segmentation.sh` runs step 7 for all four pools in priority order. It is resumable:
+`scripts/run_segmentation.sh` runs step 7 for all five pools in priority order. It is resumable:
 each pool skips images already present in its shards.
 
 ## How an image is processed
@@ -57,6 +58,37 @@ rulers, grids or colour cards around it.
 2. If it found head, pronotum and elytra, the box around them prompts SAM 2.1
    (`det_source = beetleflow_extent`); otherwise the whole frame does. No detector is run.
 
+**`herp`** (herptile bycatch): reptiles and amphibians on a white backdrop, with a barcode label,
+a metric ruler and a colour card in frame. A vial can hold several animals.
+
+1. Grounding DINO, prompt "a lizard. a frog. a salamander. a snake. a toad.". Boxes centred in
+   the bottom band that holds the ruler, or covering more than half the frame, are dropped.
+2. SAM 2.1 gives one mask per box. A mask lying mostly inside a larger one already kept is
+   dropped: several prompt words can box the same animal, and a box around a limb can sit inside
+   the box around the whole animal.
+3. No part labels (BeetleFlow is a beetle model). `midline_length_px` is the longest path through
+   the mask's skeleton: total length for a salamander or a lizard with its tail, out to the toes
+   for a frog with a leg extended. It is not snout-vent length.
+
+## Species suggestions for herptile bycatch
+
+Most herptile records are already identified to species. `nbs herps` produces a *suggestion*
+for the ones that stop at genus, family or order, from two independent sources:
+
+1. **Range, from GBIF.** Every recorded name is matched to the GBIF backbone (`herp_taxa`).
+   For each site and recorded higher taxon, GBIF is asked which of its species people have
+   observed within 100 km (`herp_candidates`). Only human observations count, so NEON's own
+   specimen records cannot vote for themselves.
+2. **Appearance, from BioCLIP 2.** Each segmented specimen, cut out on white, is scored against
+   the candidate species' taxonomic names, zero-shot; scores are averaged over a record's
+   specimens.
+
+A record gets `suggested_species` when only one candidate occurs nearby, or when BioCLIP's
+probability among several is at least 0.6. The same procedure runs on records whose species is
+known, and its accuracy there is stored in `herp_id_validation` and quoted in the report. These
+are suggestions for a curator: preserved specimens fade and bloat, and BioCLIP was not trained on
+them.
+
 ## What is measured
 
 All from the mask, in pixels (`measure.py`); millimetres are derived in step 9 when the image has
@@ -75,6 +107,8 @@ a trusted scale.
 | `pronotum_length_px`, `pronotum_width_px`, `head_width_px` | likewise for pronotum and head |
 | `elytra_midline_length_px` | elytra length along the midline, base to apex; how both annotated datasets define elytra length |
 | `elytra_base_width_px`, `pronotum_base_width_px` | widths at the pronotum-elytra junction (the 2018 volunteers' elytra width; Hawaii's basal pronotum width) |
+| `midline_length_px` | herps only: longest path along the body's midline |
+| `largest_blob_frac` | share of the raw mask in its largest blob; well below 1 means a speckled, failed mask |
 
 The body axis is the principal axis of the head, pronotum and elytra pixels together. Shape
 metrics on masks larger than 768 px are computed on a downscaled copy and scaled back; areas are
@@ -86,7 +120,7 @@ exact.
 |---|---|---|
 | `checkerboard` | 2018 trays | the side of the white squares of the 1 cm checkerboard in each photo, measured from the image. The volunteers' scale-bar annotation is not used: two of the five Zooniverse workflows record it in a different pixel frame (see [history.md](history.md)) |
 | `hawaii_scalebar` | Hawaii trays | annotated 1 cm bar |
-| `ruler_ticks` | sentinel | each crop is linked to a crop of the millimetre ruler from the same tray photo; the tick spacing is the dominant period of the dark-stroke profile |
+| `ruler_ticks` | sentinel, herps | the tick spacing of a millimetre ruler, as the dominant period of its stroke profile. Sentinel crops are linked to a ruler crop from the same tray photo; herp photos have the ruler along the bottom of the frame |
 | `printed_bar` | Biorepository macro photos | the thin printed bar is located as a long isolated horizontal line and its label ("5 mm", "1 mm") is read by OCR |
 | none | everything else | measurements stay in pixels |
 

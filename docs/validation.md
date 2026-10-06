@@ -115,6 +115,58 @@ Consequences here: the tray scale comes from the checkerboard, never from the an
 only lines from the three consistent workflows are paired with specimens. `dist_cm` itself is
 unaffected in all workflows, because a line and its scale bar share a frame.
 
+## Herptile bycatch
+
+6,149 photographs of 3,072 records gave 9,021 outlines. Most vials were photographed twice, once
+from each side, so an animal usually appears as two outlines.
+
+**Finding the animals.** There are no human outlines to compare with, but each record states how
+many animals its vial holds:
+
+| Outlines in the photo vs animals on the record | Share of 6,147 photos |
+|---|---|
+| Equal | 91.5% |
+| Within one | 99.0% |
+| More outlines than animals | 7.4% |
+| Fewer | 1.1% |
+
+Extra outlines are expected to be detached limbs and tails, which preserved amphibians shed
+easily; they were not examined one by one. 48 outlines are speckled, failed masks
+(`largest_blob_frac` below 0.8). All 6,149 photos had their ruler read; nothing independent checks
+that scale, but the values are consistent within each photo series (about 23 to 27 pixels per
+millimetre for the 3,200 px photos).
+
+**Length.** `midline_length_mm` is the longest path along the outline's skeleton: total length
+with the tail for salamanders and lizards, and out to the toes for a frog with a leg extended. It
+is not snout-vent length, and no human measurement exists to compare it with. Medians are 52 mm
+for amphibian outlines and 48 mm for reptiles.
+
+**Species suggestions.** 3,269 of 3,430 records are already identified to species. The procedure
+for the other 161 (GBIF candidates within 100 km, then BioCLIP 2 among them) was run on records
+whose species is known:
+
+| Records with a known species | Records | Median candidates | Known species among the candidates | Most-observed candidate correct | BioCLIP pick correct |
+|---|---|---|---|---|---|
+| All | 2,646 | 1 | 99.4% | 85.4% | 75.4% |
+| One candidate nearby | 1,601 | 1 | | 99.8% | |
+| Two or more candidates | 1,045 | 6 | 98.7% | 63.3% | 38.1% |
+| Two or more, BioCLIP probability at least 0.6 | 298 | 2 | 98.0% | 57.4% | 73.2% |
+
+So:
+
+- **Range alone is nearly always right when it leaves one candidate** (99.8%), and GBIF's
+  candidate list contains the true species 99% of the time.
+- **BioCLIP alone is weak on preserved specimens**: 38% when it has to choose among several
+  candidates, worse than picking the most commonly observed one (63%). Ethanol specimens are
+  faded and bloated, and half the photos show the underside.
+- **A confident BioCLIP pick is usable**: 73% correct at probability 0.6 or more.
+
+64 of the 161 records get a suggestion under those two rules: 29 from a single nearby candidate
+and 35 from a confident BioCLIP pick, the second kind right about three times in four by the
+check above. 8 records have no candidate at all, and the rest are left without a suggestion.
+`herp_id_suggestions` keeps the candidates and both picks for every record, so a different rule
+can be applied.
+
 ## Masks
 
 Nobody inspected the masks one by one. Spot checks of random samples from each pool found and
