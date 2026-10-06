@@ -41,8 +41,9 @@ def run(n_trays: int = 60, prompt: str = "beetle", seed: int = 0) -> pd.DataFram
     man = pd.read_parquet(config.TABLES / "image_manifest.parquet")
     trays = man[man["source"] == "hf2018"].sample(n_trays, random_state=seed)
     boxes = pd.read_parquet(config.TABLES / "tray_boxes_2018.parquet")
-    lines = pd.read_parquet(config.TABLES / "elytra_annotations_2018.parquet")
-    lines = lines[lines["structure"] == "ElytraLength"]
+    # annotation lines in the photo's own pixel frame only (see tables.fix_annotation_frame)
+    lines = pd.read_parquet(config.TABLES / "elytra_matches_2018.parquet")
+    lines = lines[(lines["structure"] == "ElytraLength") & lines["frame_ok"]]
     inst = pd.read_parquet(config.TABLES / "instances.parquet",
                            columns=["image_id", "box_x1", "box_y1", "box_x2", "box_y2", "win_x1", "win_y1",
                                     "mask_w", "mask_h", "mask_rle"])
@@ -68,6 +69,8 @@ def run(n_trays: int = 60, prompt: str = "beetle", seed: int = 0) -> pd.DataFram
         ln = lines[(lines["image_id"] == r.image_id)]
         users = ln["user_name"].value_counts()
         ln = ln[ln["user_name"] == ("IsaFluck" if "IsaFluck" in users.index else users.index[0])] if len(users) else ln
+        if len(ln):
+            ln = ln[ln["workflowID"] == ln["workflowID"].value_counts().index[0]]
         px, py = ((ln["x1"] + ln["x2"]) / 2).to_numpy(), ((ln["y1"] + ln["y2"]) / 2).to_numpy()
         union3 = masks.any(axis=0) if len(masks) else np.zeros(small.size[::-1], bool)
         cov3 = sum(bool(union3[min(int(y * s), union3.shape[0] - 1), min(int(x * s), union3.shape[1] - 1)]) for x, y in zip(px, py))

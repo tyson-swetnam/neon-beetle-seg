@@ -8,22 +8,54 @@ The pipeline pulls records and images from NEON, the NEON Biorepository, GBIF an
 runs open segmentation models on a single 16 GB GPU, and publishes the result as a
 [DuckLake](https://ducklake.select/) lakehouse on the CyVerse Data Store.
 
-**Status: v0.2.0, segmentation run in progress.** Results and validation numbers are added to this page and to [docs/validation.md](docs/validation.md) when the run completes.
+**Status: v0.2.0** (October 2026). Beetle results are complete; herptile bycatch segmentation is
+in progress.
+
+## Results
+
+| | |
+|---|---|
+| NEON trap tables | 47 sites, 20 domains, 539 plots, July 2013 to September 2026; 145,906 pinned individuals of 826 taxa |
+| Preserved samples | 286,617 ethanol vials (bulk carabids and invertebrate, herptile and mammal bycatch) linked to their Biorepository accessions |
+| Biorepository records | 188,522 in 11 collections; 145,263 of them also on GBIF |
+| Images processed | 53,257 beetle images from four pools, plus 6,149 herptile bycatch photos |
+| Beetles segmented | 65,830 specimens; 57,023 with a millimetre scale; 64,102 with elytra measured |
+| Linked to a NEON site | 20,698 beetle specimens at 46 sites (the 44,510 sentinel crops are anonymised and cannot be linked) |
+
+How well it works, against human annotations ([docs/validation.md](docs/validation.md)):
+
+- **Finding beetles in tray photos:** 99.6% of 10,183 annotated individuals have a mask;
+  precision 0.971 and recall 0.996 against 11,655 human boxes.
+- **Elytra length:** r = 0.98 with human lines on 10,045 ethanol specimens, but it reads about
+  0.8 mm (8%) long. Treat absolute lengths as biased high.
+- **Elytra width:** median error 6.0% at the base (ethanol trays), 2.0% at the widest point
+  (pinned, Hawaii).
+- **Scale readers:** within 0.6% of human scale bars where that could be checked.
+
+Things to know before using the numbers:
+
+- Most NEON pitfall specimens have never been photographed (about 1% of the Biorepository's
+  pinned vouchers have an image), so the trap tables cover every site while measurements cover
+  only the imaged specimens.
+- 8,807 beetle specimens have no millimetre scale and stay in pixels: the 5,668 2016 individual
+  photos, 1,259 pinned photos without a readable bar, and 1,880 sentinel and tray specimens
+  whose scale could not be read.
+- Masks were spot-checked, not reviewed one by one. Filter on the quality flags in
+  [docs/pipeline.md](docs/pipeline.md#quality-flags).
+- Post-2023 NEON rows are provisional and can change; they are flagged in every table.
 
 ## What you get
 
 | | |
 |---|---|
 | Trap tables | NEON DP1.10022.001 stacked for all sites, release and provisional rows flagged |
-| Specimen records | 141,690 NEON Biorepository records with their NEON identifiers, plus GBIF IDs |
-| Image manifest | 53,792 images from four pools, each with source URL, sha256 and NEON join keys |
+| Specimen records | 188,522 NEON Biorepository records (pinned and bulk carabids, DNA extracts, bycatch) with their NEON identifiers, plus GBIF IDs |
+| Preserved samples | every ethanol vial in NEON's sorting and archive tables, linked to its accession |
+| Image manifest | 59,945 images from five pools, each with source URL, sha256 and NEON join keys |
 | Masks | one instance mask per specimen, plus head / pronotum / elytra part masks (COCO RLE) |
 | Measurements | area, length, width, body length, elytra length and width, pronotum width, colour; in mm where the photo has a readable scale |
+| Herptile bycatch | masks and lengths for the photographed reptiles and amphibians, and GBIF-assisted species suggestions for the ones not identified to species |
 | Validation | agreement with human boxes and human elytra / pronotum measurements |
-
-Most NEON pitfall specimens have never been photographed (about 1% of the Biorepository's pinned
-vouchers have an image), so the trap tables cover every site while measurements cover only the
-imaged specimens. [docs/data-sources.md](docs/data-sources.md) has the details.
 
 ## Using the data
 
@@ -37,7 +69,7 @@ ATTACH 'ducklake:beetles.ducklake' AS lake (READ_ONLY);
 -- median body length per species at each site, for specimens with a scale and complete parts
 SELECT siteID, scientificName, count(*) AS n, round(median(body_length_parts_mm), 2) AS body_mm
 FROM lake.measurements
-WHERE qc_has_scale AND parts_complete AND NOT trunk_touches_edge AND source <> 'sentinel'
+WHERE qc_has_scale AND parts_complete AND NOT trunk_touches_edge AND source NOT IN ('sentinel', 'herp')
 GROUP BY ALL ORDER BY n DESC;
 ```
 
@@ -52,15 +84,16 @@ git clone https://github.com/tyson-swetnam/neon-beetle-seg.git && cd neon-beetle
 scripts/bootstrap.sh            # uv environment (Python 3.12, PyTorch CUDA 12.6), GPU check
 
 .venv/bin/nbs biorepo           # Biorepository records and image list
-.venv/bin/nbs images            # download the Biorepository images (1.8 GB)
+.venv/bin/nbs images            # download the Biorepository beetle and herptile images (6.6 GB)
 .venv/bin/nbs hf                # Imageomics datasets from HuggingFace (about 36 GB)
 .venv/bin/nbs gbif              # GBIF records
 .venv/bin/nbs neon              # NEON trap tables, all sites (needs NEON_TOKEN)
 .venv/bin/nbs manifest          # one row per image
-scripts/run_segmentation.sh     # detect, segment, measure: all four pools (hours on the GPU)
+scripts/run_segmentation.sh     # detect, segment, measure: all five pools (many GPU hours)
 .venv/bin/nbs scale             # millimetre scale per image
 .venv/bin/nbs tables            # collect results
 .venv/bin/nbs validate          # compare with human annotations
+.venv/bin/nbs herps             # GBIF-assisted species suggestions for herptile bycatch
 .venv/bin/nbs lake              # build the DuckLake
 .venv/bin/nbs report            # HTML report
 .venv/bin/nbs upload            # sync to the CyVerse Data Store

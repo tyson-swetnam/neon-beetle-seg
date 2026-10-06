@@ -15,6 +15,7 @@ STEPS = {
     "scale": ("scale", "read pixel-per-mm scales from rulers and printed bars"),
     "tables": ("tables", "collect segmentation shards into instances / measurements"),
     "validate": ("validate", "compare with human annotations"),
+    "herps": ("herp_id", "GBIF candidate species and BioCLIP suggestions for herptile bycatch"),
     "sam3": ("sam3_compare", "SAM 3 text-prompted comparison on validation trays (gated model)"),
     "lake": ("build_ducklake", "build the DuckLake lakehouse and flat DuckDB file"),
     "report": ("report", "write the HTML report"),

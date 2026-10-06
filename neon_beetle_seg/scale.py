@@ -233,7 +233,10 @@ MIN_BAR_FRACTION = 0.15  # printed bars span 22-45% of the frame; shorter "bars"
 
 
 MAX_SQUARE_SPREAD = 0.03  # checkerboard squares must agree with each other to 3%
-POOLS = ("hf2018", "hawaii", "sentinel", "biorepo")
+POOLS = ("hf2018", "hawaii", "sentinel", "biorepo", "herp")
+# the herp photos share a layout: the ruler lies along the bottom, left of the colour card
+HERP_RULER_REGION = (0.0, 0.62, 0.70, 1.0)  # x1, y1, x2, y2 as fractions of the frame
+HERP_MIN_TICKS = 20
 
 
 def build(pools: tuple[str, ...] | None = None):
@@ -242,7 +245,8 @@ def build(pools: tuple[str, ...] | None = None):
     scale_source values:
       checkerboard      the 1 cm checkerboard in each 2018 tray photo, measured from the image
       hawaii_scalebar   human-drawn 1 cm bar (Hawaii trays)
-      ruler_ticks       millimetre ruler crop read by ruler_px_per_mm (sentinel)
+      ruler_ticks       millimetre ruler read by ruler_px_per_mm (sentinel ruler crops; the ruler
+                        along the bottom of each herp photo)
       printed_bar       printed bar + OCR label (Biorepository macro photos)
     Images with no trusted scale keep px_per_mm null and their measurements stay in pixels.
 
@@ -291,6 +295,17 @@ def build(pools: tuple[str, ...] | None = None):
         for r in sent.itertuples():
             res = by_bar.get(r.scalebar_path, {})
             ok = bool(res.get("px_per_mm")) and res["confidence"] >= MIN_TICK_CONFIDENCE and res["n_ticks"] >= MIN_TICKS
+            rows.append(dict(image_id=r.image_id, px_per_mm=res["px_per_mm"] if ok else None,
+                             scale_source="ruler_ticks" if ok else None, scale_confidence=res.get("confidence"),
+                             scale_detail=f"ticks={res.get('n_ticks')};{res.get('orientation')}"))
+
+    if "herp" in pools:
+        for r in tqdm(list(man[man["source"] == "herp"].itertuples()), desc="herp rulers", mininterval=30):
+            im = Image.open(config.ROOT / r.local_path)
+            w, h = im.size
+            x1, y1, x2, y2 = HERP_RULER_REGION
+            res = ruler_px_per_mm(im.crop((int(x1 * w), int(y1 * h), int(x2 * w), int(y2 * h))), min_ticks=HERP_MIN_TICKS)
+            ok = bool(res.get("px_per_mm")) and res["confidence"] >= MIN_TICK_CONFIDENCE
             rows.append(dict(image_id=r.image_id, px_per_mm=res["px_per_mm"] if ok else None,
                              scale_source="ruler_ticks" if ok else None, scale_confidence=res.get("confidence"),
                              scale_detail=f"ticks={res.get('n_ticks')};{res.get('orientation')}"))

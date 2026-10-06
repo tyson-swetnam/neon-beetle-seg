@@ -7,7 +7,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 mkdir -p logs
-for pool in hf2018 hawaii biorepo; do
+for pool in hf2018 hawaii biorepo herp; do
   .venv/bin/python -m neon_beetle_seg.segment "$pool" 2>&1 | grep -v -E 'Warning|warn|sam2_video' | tee -a "logs/segment_${pool}.log"
 done
 .venv/bin/python -m neon_beetle_seg.segment sentinel --sam facebook/sam2.1-hiera-base-plus 2>&1 \
