@@ -6,8 +6,8 @@ the GBIF backbone taxonomy match, and (with an account) a citable download DOI.
 
 Two ways in, same output table:
   download  authenticated GBIF download (GBIF_USER / GBIF_PWD / GBIF_EMAIL) -> citable DOI
-  search    anonymous occurrence search, paged per dataset (each dataset is under the API's
-            100,000-record paging limit)
+  search    anonymous occurrence search, paged per dataset in year-and-state slices (deep
+            offsets are too slow to page a 98,000-record dataset in one go)
 
 Output: data/tables/gbif_occurrences.parquet, data/gbif/provenance.json
 """
@@ -51,35 +51,51 @@ def _tidy(df: pd.DataFrame, collection_by_key: dict[str, str]) -> pd.DataFrame:
     return df
 
 
+def _get(client: httpx.Client, params: dict) -> dict:
+    for attempt in range(5):
+        try:
+            r = client.get(f"{API}/occurrence/search", params=params)
+            r.raise_for_status()
+            return r.json()
+        except httpx.HTTPError:
+            time.sleep(3 * (attempt + 1))
+    raise RuntimeError(f"GBIF search failed for {params}")
+
+
 def via_search() -> tuple[pd.DataFrame, dict]:
-    rows = []
-    with httpx.Client(timeout=120, headers={"User-Agent": "neon-beetle-seg/0.2"}) as client:
+    """Page the anonymous search API in small slices.
+
+    GBIF's search gets very slow at deep offsets (minutes per page past ~30,000), so each
+    dataset is split by year and state, which keeps every slice a few thousand records at most.
+    (Month is no use as a key: collection dates are two-week ranges, and GBIF leaves month empty
+    when a range crosses a month boundary.) Records with no year or state cannot be reached this
+    way; the shortfall is reported.
+    """
+    rows, expected = [], {}
+    with httpx.Client(timeout=180, headers={"User-Agent": "neon-beetle-seg/0.2"}) as client:
         for coll, key in DATASETS.items():
-            offset = 0
-            while True:
-                for attempt in range(5):
-                    try:
-                        r = client.get(f"{API}/occurrence/search",
-                                       params={"datasetKey": key, "familyKey": config.CARABIDAE_KEY,
-                                               "limit": 300, "offset": offset})
-                        r.raise_for_status()
-                        break
-                    except httpx.HTTPError:
-                        time.sleep(3 * (attempt + 1))
-                else:
-                    raise RuntimeError(f"GBIF search failed for {coll} at offset {offset}")
-                page = r.json()
-                for rec in page["results"]:
-                    row = {f: rec.get(f) for f in FIELDS}
-                    row["n_media"] = len(rec.get("media", []))
-                    rows.append(row)
-                offset += 300
-                if page["endOfRecords"]:
-                    break
-            print(f"  {coll}: {offset if not page['endOfRecords'] else page['count']:,} records", flush=True)
+            base = {"datasetKey": key, "familyKey": config.CARABIDAE_KEY}
+            facets = _get(client, {**base, "limit": 0, "facet": ["year", "stateProvince"], "facetLimit": 200})
+            expected[coll] = facets["count"]
+            by_field = {f["field"]: [c["name"] for c in f["counts"]] for f in facets.get("facets", [])}
+            n0 = len(rows)
+            for year in sorted(by_field.get("YEAR", [])):
+                for state in sorted(by_field.get("STATE_PROVINCE", [])):
+                    offset = 0
+                    while True:
+                        page = _get(client, {**base, "year": year, "stateProvince": state, "limit": 300, "offset": offset})
+                        for rec in page["results"]:
+                            row = {f: rec.get(f) for f in FIELDS}
+                            row["n_media"] = len(rec.get("media", []))
+                            rows.append(row)
+                        offset += 300
+                        if page["endOfRecords"]:
+                            break
+            print(f"  {coll}: {len(rows) - n0:,} of {expected[coll]:,} records", flush=True)
+    df = pd.DataFrame(rows).drop_duplicates("key")
     prov = {"method": "occurrence/search", "accessed": time.strftime("%Y-%m-%d"), "datasets": DATASETS,
-            "filter": {"familyKey": config.CARABIDAE_KEY}}
-    return pd.DataFrame(rows), prov
+            "filter": {"familyKey": config.CARABIDAE_KEY}, "expected": expected, "fetched": int(len(df))}
+    return df, prov
 
 
 def via_download(user: str, pwd: str, email: str) -> tuple[pd.DataFrame, dict]:
