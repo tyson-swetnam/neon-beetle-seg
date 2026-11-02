@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "mesa-mcp": {
+      "type": "stdio",
+      "command": "${HOME}/.mesa/.venv/bin/mesa-mcp",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "MESA_MCP_DUCKLAKE__CATALOG_DSN": "${MESA_MCP_DUCKLAKE__CATALOG_DSN:-}"
+      }
+    },
+    "irods": {
+      "type": "stdio",
+      "command": "${HOME}/.mesa/bin/irods-mcp-server",
+      "args": ["-c", "${HOME}/.mesa/repos/irods-mcp-server/config-stdio.yaml"]
+    },
+    "formation": {
+      "type": "http",
+      "url": "https://de.cyverse.org/formation/mcp"
+    }
+  }
+}
