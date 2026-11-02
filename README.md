@@ -126,6 +126,7 @@ sources, and `image_manifest` records the URL and sha256 of every image used.
 | [docs/validation.md](docs/validation.md) | measured accuracy and known biases |
 | [docs/schema.md](docs/schema.md) | data dictionary |
 | [docs/environment.md](docs/environment.md) | the VM, what persists, setup, secrets, measured GPU speed |
+| [docs/mcp.md](docs/mcp.md) | MESA, DuckLake, iRODS and Formation MCP servers for Claude Code (`.mcp.json`) and claude.ai |
 | [docs/history.md](docs/history.md) | what changed from the v0.1.0 pilot |
 
 ## Licence
